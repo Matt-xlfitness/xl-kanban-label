@@ -1,46 +1,77 @@
-# Brief for Manus — XL Kanban Label Integration
+# Brief for Manus — XL Kanban Label
 
-**Hi Manus.** Please read this in full before writing any code.
-
----
-
-## TL;DR — what changed
-
-You no longer need to render the label yourself. The label is **already built** as a self-contained HTML page (`product-label.html`). Your previous attempt mis-mapped the data into the wrong rows, used "Attribute 6/7/8" placeholders, and broke the print layout.
-
-**Your new, smaller job:** expose the product data in the exact JSON format below, and link to the label page from each product. The label page does all rendering, auto-fitting, QR generation, and printing — leave that alone.
+**Hi Manus.** Read this fully before writing any code.
 
 ---
 
-## What you must do
+## What's changed
 
-### 1. Expose product data at a JSON endpoint
+The Kanban label is **already built and hosted live**. You no longer need to render it. Your only job is to **send data to it**.
 
-For every XL Part ID on the site, there must be an endpoint that returns the product as JSON:
+🔗 **Live label page:** https://matt-xlfitness.github.io/xl-kanban-label/
+🔗 **URL builder (for testing):** https://matt-xlfitness.github.io/xl-kanban-label/builder.html
 
+When opened with the right query string, the label renders correctly — the design, fonts, layout, auto-fit text, QR generation and 127 × 127 mm print are all handled. **Do not rebuild any of it.**
+
+---
+
+## What you do
+
+For every part on the XL Fitness site, add a **"Print Kanban Label"** button. The button opens the live label page with the part's data passed in the URL.
+
+You have two ways to pass data:
+
+### Option A — `?data=` URL (preferred, no backend needed)
+
+1. Build the product JSON (see exact shape below).
+2. Base64-encode the JSON.
+3. Build the URL: `https://matt-xlfitness.github.io/xl-kanban-label/?data=<base64>`
+4. The "Print Label" button opens that URL in a new tab.
+
+JavaScript snippet you can drop into your codebase:
+
+```js
+function kanbanLabelUrl(product) {
+  const json = JSON.stringify(product);
+  const b64  = btoa(unescape(encodeURIComponent(json)));
+  return `https://matt-xlfitness.github.io/xl-kanban-label/?data=${b64}`;
+}
+
+// Usage:
+<a href={kanbanLabelUrl(productData)} target="_blank">Print Kanban Label</a>
 ```
-GET /api/parts/SUPPS-0267
-```
 
-Response body — **must** match this shape exactly:
+### Option B — `?code=` + your API
+
+If you'd rather have the label fetch from your backend:
+
+1. Expose `GET https://your-site/api/parts/:code` returning the JSON below.
+2. Tell Matt and I'll set `API_ENDPOINT` in `index.html` to your URL.
+3. Buttons just link to `https://matt-xlfitness.github.io/xl-kanban-label/?code=SUPPS-0267`.
+
+**Pick A unless you have a reason to use B.** A means zero backend wiring on your side.
+
+---
+
+## The exact JSON shape
 
 ```json
 {
   "code": "SUPPS-0267",
   "description": "Amino Energy Sparkling - 355ml - Blueberry Lemonade",
   "rows": {
-    "a3":  { "label": "TYPE",            "value": "Energy Drinks" },
-    "a4":  { "label": "VARIANT",         "value": "Blueberry Lemonade" },
-    "a5":  { "label": "BRAND",           "value": "Optimum Nutrition" },
-    "a6":  { "label": "",                "value": "" },
-    "a7":  { "label": "",                "value": "" },
-    "a8":  { "label": "",                "value": "" },
-    "a9":  { "label": "",                "value": "" },
-    "a10": { "label": "SUPPLIER",        "value": "FitnessVending" },
-    "a11": { "label": "XL PART ID",      "value": "SUPPS-0267" },
-    "a12": { "label": "SUPPLIER SKU",    "value": "XXXXXXXX" },
-    "a1":  { "label": "Q to Order",      "value": "1" },
-    "a2":  { "label": "Box Size",        "value": "12" }
+    "a3":  { "label": "TYPE",         "value": "Energy Drinks" },
+    "a4":  { "label": "VARIANT",      "value": "Blueberry Lemonade" },
+    "a5":  { "label": "BRAND",        "value": "Optimum Nutrition" },
+    "a6":  { "label": "",             "value": "" },
+    "a7":  { "label": "",             "value": "" },
+    "a8":  { "label": "",             "value": "" },
+    "a9":  { "label": "",             "value": "" },
+    "a10": { "label": "SUPPLIER",     "value": "FitnessVending" },
+    "a11": { "label": "XL PART ID",   "value": "SUPPS-0267" },
+    "a12": { "label": "SUPPLIER SKU", "value": "12345678" },
+    "a1":  { "label": "Q to Order",   "value": "1" },
+    "a2":  { "label": "Box Size",     "value": "12" }
   },
   "image":     "https://your-cdn.com/parts/SUPPS-0267.png",
   "qrPayload": "https://xlfitness.com.au/parts/SUPPS-0267",
@@ -48,102 +79,90 @@ Response body — **must** match this shape exactly:
 }
 ```
 
-### 2. Add a "Print Kanban Label" button
+### Field rules
 
-On each product page, add a button that opens the label page in a new tab with the part code in the query string:
-
-```html
-<a href="/labels/index.html?code=SUPPS-0267" target="_blank">
-  Print Kanban Label
-</a>
-```
-
-The label page (which I will update) will:
-1. Read `?code=SUPPS-0267` from the URL
-2. Call `/api/parts/SUPPS-0267`
-3. Render the label
-4. User hits print → 127 × 127 mm card
-
-That's the whole flow. **You do not render the label. You provide the data + the link.**
-
----
-
-## Exact field mapping — do not deviate
-
-| Your site's field | Maps to JSON key | Goes into label slot |
+| Key | Required | Notes |
 |---|---|---|
-| Part code (SUPPS-…) | `code` | Top header bar (large text) |
-| Product name | `description` | Second header bar |
-| Type / Category | `rows.a3.value` | Spec row 1 |
-| Variant / Flavour | `rows.a4.value` | Spec row 2 |
-| Brand | `rows.a5.value` | Spec row 3 |
-| (extra attributes if any) | `rows.a6..a9.value` | Spec rows 4–7 |
-| Supplier name | `rows.a10.value` | Spec row 8 |
-| XL Part ID (same as code) | `rows.a11.value` | Spec row 9 |
-| Supplier SKU | `rows.a12.value` | Spec row 10 |
-| Q to Order | `rows.a1.value` | Bottom row 1 (large box) |
-| Box Size | `rows.a2.value` | Bottom row 2 (large box) |
-| Product image URL | `image` | Right side image area |
-| URL to encode in QR | `qrPayload` | QR code on bottom right |
-| Card colour (hex) | `color` | Header bar / accent colour (default `#121826`) |
-
-The corresponding `label` field in each row must be the human-readable label shown on the card (`TYPE`, `VARIANT`, `BRAND`, `SUPPLIER`, etc.).
+| `code` | yes | Renders in the top header bar |
+| `description` | yes | Renders in the second header bar |
+| `rows.a3..a12` | yes (slots) | Spec rows. Both `label` AND `value` empty → row is hidden |
+| `rows.a1` | yes | Bottom-left big box: Q to Order |
+| `rows.a2` | yes | Bottom-left big box: Box Size |
+| `image` | optional | URL; if missing, `<IMAGE>` placeholder shown |
+| `qrPayload` | optional | String encoded into the QR code; defaults to `code` if missing |
+| `color` | optional | Hex; defaults to navy `#121826`. Future per-product colour-coding hook |
 
 ---
 
-## Hard rules
+## Hard rules — DO / DO NOT
 
 ✅ **DO**
-- Always populate `a3`, `a4`, `a5`, `a10`, `a11`, `a12`, `a1`, `a2` if data exists.
-- Leave both `label` AND `value` as empty strings (`""`) for any row that has no data — the label page automatically hides empty rows so the card stays clean.
-- Provide an `image` URL when one exists; the label gracefully falls back to a placeholder if it's missing.
-- Use the actual price/box-size/supplier values in the correct rows.
+- Map your site's fields to the JSON keys exactly per the table below.
+- Leave `label` AND `value` as empty strings (`""`) for rows with no data — the label page hides them automatically.
+- Always populate `a1` (Q to Order) and `a2` (Box Size).
+- Test with the URL builder before integrating: https://matt-xlfitness.github.io/xl-kanban-label/builder.html
 
 ❌ **DO NOT**
-- Do **not** put placeholder text like `"Attribute 6"`, `"Attribute 7"`, etc. in empty rows. Leave them as `""`.
-- Do **not** put Q to Order or Box Size in the spec area (`a3..a12`). They belong in `a1` and `a2`, which render as the big bottom rows.
-- Do **not** put prices ($39.60, $3.30) in the Brand or Box Size rows — those are wrong fields.
-- Do **not** rebuild the label HTML/CSS yourself. Use the file I'm sending you.
-- Do **not** strip the `print-color-adjust` CSS or change the `@page { size: 127mm 127mm }` rule — they exist to make the print come out right.
+- **Do not rebuild the label HTML/CSS.** Use the live page.
+- **Do not** put placeholder strings like `"Attribute 6"`, `"Attribute 7"` in empty rows. Use `""`.
+- **Do not** put Q to Order or Box Size in `a3..a12`. They go in `a1` / `a2`.
+- **Do not** put prices or quantities in the `Brand` / `Supplier` rows.
+- **Do not** strip print CSS or change the page size.
 
 ---
 
-## What was broken in the last attempt (so you don't repeat it)
+## Field mapping — your site → JSON
 
-Looking at the last render of `SUPPS-0267`:
+| Your site's field | Maps to JSON key |
+|---|---|
+| Part code (SUPPS-…) | `code` and `rows.a11.value` |
+| Product name | `description` |
+| Type / Category | `rows.a3` (label `"TYPE"`) |
+| Variant / Flavour | `rows.a4` (label `"VARIANT"`) |
+| Brand | `rows.a5` (label `"BRAND"`) |
+| (extra attributes 6–9 if any) | `rows.a6..a9` |
+| Supplier name | `rows.a10` (label `"SUPPLIER"`) |
+| Supplier SKU / barcode | `rows.a12` (label `"SUPPLIER SKU"`) |
+| Q to Order (per-part value) | `rows.a1` (label `"Q to Order"`) |
+| Box Size (units per box) | `rows.a2` (label `"Box Size"`) |
+| Product image URL | `image` |
+| Part page URL on XL site | `qrPayload` |
+| Card accent colour (per-category) | `color` |
+
+---
+
+## What the last attempt got wrong (so you don't repeat it)
+
+Looking at the previous render of `SUPPS-0267`:
 
 | Symptom | Cause |
 |---|---|
-| Title cut off ("…Blueberry Lemo") | Auto-fit script wasn't running — happens because you rebuilt the label instead of using the source file. |
-| "Q to Order" with value "Energy Drinks" | Field mapping wrong — `a1` got TYPE data instead of Q to Order. |
-| "Brand" showing "$3.30" | Price was placed in the Brand row. |
-| "Attribute 6/7/8" boxes visible | Empty rows showed placeholder labels instead of being hidden. |
-| Image and QR overflowed the card border | Layout proportions changed when rebuilt — the source file already has the correct proportions. |
-| Bottom rows ("Q to Order" / "Box Size") in wrong place | They belong in two big boxes at the bottom, not in the top spec area. |
+| Title cut off ("…Blueberry Lemo") | Auto-fit script wasn't running. Won't happen if you use the live page — the script is built in. |
+| "Q to Order" with value "Energy Drinks" | Field mapping wrong: `a1` got TYPE data instead. |
+| "Brand" showing "$3.30" | Price was put in the Brand row. Brand is the brand name string. |
+| "Attribute 6/7/8" boxes visible | Empty rows had placeholder labels. Use `""` for both `label` and `value`. |
+| Image and QR overflowed the card border | Layout was redrawn. Won't happen if you use the live page. |
+| Bottom rows in wrong place | Q to Order and Box Size were stuffed into `a3`/`a4` instead of `a1`/`a2`. |
 
-Fix: stop rebuilding. Just provide the JSON + link to the source label page.
+Fix: stop rebuilding. Use the live page + send data via the URL.
 
 ---
 
-## Confirmation checklist before you say it's done
+## Confirmation checklist before you ship
 
-- [ ] `/api/parts/SUPPS-0267` returns the JSON above (or close to it with real values)
-- [ ] The product page has a "Print Kanban Label" button/link pointing to `/labels/index.html?code=…`
-- [ ] Empty rows are returned as `{ "label": "", "value": "" }` — never as `"Attribute 6"`
-- [ ] `a1` and `a2` contain Q to Order and Box Size (NOT type/brand data)
-- [ ] When the label page is opened with `?code=SUPPS-0267`, you see the energy drink card render correctly with no clipped text and no overflowing boxes
+- [ ] Each product page has a "Print Kanban Label" button
+- [ ] The button opens `https://matt-xlfitness.github.io/xl-kanban-label/?data=…` in a new tab
+- [ ] Empty rows are sent as `{ "label": "", "value": "" }` — never `"Attribute N"`
+- [ ] `a1` and `a2` contain Q to Order and Box Size (not category data)
+- [ ] Opening the link for `SUPPS-0267` shows the energy drink card with no clipped text and no overflowing boxes
 - [ ] Print preview shows a 127 × 127 mm page with solid navy bars (not light grey)
 
-If any of these fail, the fix is in your data layer — not in the label HTML.
+If any of these fail, the bug is in your data — not the label.
 
 ---
 
-## Files you have
+## Questions
 
-- `product-label.html` — the label rendering page. Host this as a static file (e.g. at `/labels/index.html`). I will update it to call your `/api/parts/:code` endpoint instead of using the local stub.
-- `INTEGRATION.md` — full technical spec (use as reference)
-- This brief — the rules
-
-If you have questions about the data shape, **ask before guessing**. Do not invent placeholders.
+If the data on your site doesn't perfectly match a field, transform it client-side before encoding. Don't change the live label page. Ask Matt if you're unsure.
 
 — Matt
