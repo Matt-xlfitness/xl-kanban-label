@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>XL Kanban Label — URL Builder</title>
+<style>
+  body { font: 14px/1.5 -apple-system, sans-serif; max-width: 900px; margin: 30px auto; padding: 0 20px; color: #222; }
+  h1 { font-size: 22px; }
+  textarea { width: 100%; min-height: 360px; font: 13px/1.4 ui-monospace, monospace; padding: 10px; border: 1px solid #ccc; border-radius: 6px; }
+  button { padding: 8px 16px; background: #121826; color: white; border: 0; border-radius: 6px; cursor: pointer; font-weight: 600; }
+  .out { word-break: break-all; background: #f4f4f4; padding: 12px; border-radius: 6px; margin-top: 12px; font: 12px/1.5 ui-monospace, monospace; }
+  a { color: #0a58ca; }
+  .row { margin: 12px 0; }
+  label { display: block; font-weight: 600; margin-bottom: 4px; }
+  small { color: #666; }
+</style>
+</head>
+<body>
+
+<h1>XL Kanban Label — URL Builder</h1>
+<p>Paste your product JSON below, click <b>Build URL</b>, then share the resulting link. Opening the link renders the label with that data — no backend required.</p>
+
+<div class="row">
+  <label for="base">Label page URL</label>
+  <input id="base" type="text" value="" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font:13px ui-monospace,monospace" />
+  <small>Defaults to this folder's <code>product-label.html</code>. Change after deploy (e.g. <code>https://your-username.github.io/repo/</code>).</small>
+</div>
+
+<div class="row">
+  <label for="json">Product JSON</label>
+  <textarea id="json"></textarea>
+</div>
+
+<button id="build">Build URL</button>
+<button id="open" style="margin-left:8px;background:#2a7a3a">Build & Open</button>
+
+<div class="out" id="result">URL will appear here…</div>
+
+<script>
+const SAMPLE = {
+  code: "SUPPS-0267",
+  description: "Amino Energy Sparkling - 355ml - Blueberry Lemonade",
+  rows: {
+    a3:  { label: "TYPE",         value: "Energy Drinks" },
+    a4:  { label: "VARIANT",      value: "Blueberry Lemonade" },
+    a5:  { label: "BRAND",        value: "Optimum Nutrition" },
+    a6:  { label: "",             value: "" },
+    a7:  { label: "",             value: "" },
+    a8:  { label: "",             value: "" },
+    a9:  { label: "",             value: "" },
+    a10: { label: "SUPPLIER",     value: "FitnessVending" },
+    a11: { label: "XL PART ID",   value: "SUPPS-0267" },
+    a12: { label: "SUPPLIER SKU", value: "12345678" },
+    a1:  { label: "Q to Order",   value: "1" },
+    a2:  { label: "Box Size",     value: "12" }
+  },
+  image: "",
+  qrPayload: "https://xlfitness.com.au/parts/SUPPS-0267",
+  color: "#121826"
+};
+
+document.getElementById("json").value = JSON.stringify(SAMPLE, null, 2);
+document.getElementById("base").value = new URL("product-label.html", location.href).href;
+
+function build() {
+  let parsed;
+  try { parsed = JSON.parse(document.getElementById("json").value); }
+  catch (e) { alert("Invalid JSON: " + e.message); return null; }
+  const json = JSON.stringify(parsed);
+  const b64 = btoa(unescape(encodeURIComponent(json)));
+  const base = document.getElementById("base").value.trim();
+  const url = base + (base.includes("?") ? "&" : "?") + "data=" + b64;
+  document.getElementById("result").innerHTML =
+    `<a href="${url}" target="_blank">${url}</a>`;
+  return url;
+}
+
+document.getElementById("build").addEventListener("click", build);
+document.getElementById("open").addEventListener("click", () => {
+  const url = build();
+  if (url) window.open(url, "_blank");
+});
+</script>
+
+</body>
+</html>

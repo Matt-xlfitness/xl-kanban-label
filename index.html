@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<!--
+================================================================
+  XL FITNESS — KANBAN PRODUCT LABEL TEMPLATE
+  127 × 127 mm printable label, single self-contained HTML file.
+  Source design: Figma file ePmTOphFK3IFYsh7X78hcs (node 1:4)
+================================================================
+
+  HANDOFF NOTE FOR INTEGRATING AI (Manus / etc.)
+  ----------------------------------------------
+  This file is the visual + behavioural reference. Match the
+  style exactly when you build it into the XL Fitness site.
+
+  WHAT TO REUSE AS-IS
+    - All CSS (visual layout, colours, fonts, print rules)
+    - The auto-fit text script (fitText / fitAll)
+    - The print CSS — including print-color-adjust + @page 127mm
+    - The QR code generation (qrcodejs library, error level H)
+
+  WHAT TO REPLACE WITH LIVE DATA
+    The PRODUCTS object near the bottom is a stub. On the real
+    site, replace it with a fetch from your part catalog API,
+    keyed by the XL Part ID (e.g. SUPPS-0356).
+
+    Expected shape per product:
+    {
+      code:        "SUPPS-0356",
+      description: "Gatorade NO SUGAR - Berry",
+      rows: {
+        a3..a12: { label, value },   // 10 spec rows (any subset)
+        a1, a2:  { label, value }    // bottom: Q to Order, Box Size
+      },
+      image:     "https://.../bottle.png",   // optional product image URL
+      qrPayload: "https://xlfitness.com.au/parts/SUPPS-0356",
+      color:     "#121826"            // optional override (defaults to navy)
+    }
+
+    Empty rows (label === "" && value === "") render as blank
+    space — the cell box does NOT draw. This matches the source
+    spreadsheet behaviour for parts with fewer attributes.
+
+  URL CONTRACT
+    The label takes ?code=<XL_PART_ID> in the query string and
+    renders that product on load. e.g.
+      https://xlfitness.com.au/label.html?code=SUPPS-0356
+
+  PRINTING
+    - Page size MUST be 127 × 127 mm
+    - Browser print dialog: Margins = None, Scale = 100%,
+      Background graphics = ON (Chrome/Edge/Safari) — without
+      it the navy bars print as light grey.
+    - "Print 127×127mm" button on the page calls window.print().
+
+  COLOUR (planned)
+    Each card's accent colour will eventually vary by product
+    (category / supplier / urgency — TBD). The PRODUCTS schema
+    already includes an optional `color` field; when wired up,
+    swap it into --navy via inline style on .label. Until then
+    every card is the default navy #121826.
+================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>XL Kanban Label — SUPPS-0356</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  /* ===========================================================
+     Source: Figma file ePmTOphFK3IFYsh7X78hcs (node 1:4)
+     Design canvas: 831 x 911 (Figma pixels)
+     Print target: 127mm x 127mm — stretched isotropically per axis
+                    (~9% vertical compression vs. source aspect)
+     Navy:  #121826
+     Font:  Lexend ExtraBold (800)
+     =========================================================== */
+
+  :root {
+    --navy:  #121826;
+    --black: #000;
+    --white: #ffffff;
+    --page-bg: #d6d6d6;
+    --print-size: 127mm;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Lexend', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--page-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 60px;
+  }
+
+  /* ---------- Controls ---------- */
+  .controls {
+    margin-bottom: 24px;
+    background: var(--white);
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 14px;
+    font-family: 'Lexend', sans-serif;
+    font-weight: 700;
+  }
+  .controls input {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 180px;
+    font-family: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .controls button {
+    padding: 7px 16px;
+    background: var(--navy);
+    color: var(--white);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 800;
+  }
+  .controls .print-btn { background: #2a7a3a; }
+  .hint { font-size: 12px; color: #555; font-weight: 500; }
+
+  /* ---------- Stage = exact print size ---------- */
+  .stage {
+    width: var(--print-size);
+    height: var(--print-size);
+    position: relative;
+    container-type: size;
+    background: var(--white);
+  }
+
+  /* ---------- Label (all positioning is % of stage) ---------- */
+  .label {
+    position: absolute;
+    inset: 0;
+    background: var(--white);
+    border-radius: 3.61cqw; /* 30/831 */
+    outline: 1.92cqw solid var(--black); /* 16/831 */
+    outline-offset: -1.92cqw;
+  }
+
+  .label > * { position: absolute; }
+
+  /* ---------- Header bars ---------- */
+  .code-bar,
+  .name-bar {
+    background: var(--navy);
+    border-radius: 1.20cqw; /* 10/831 */
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
+    overflow: hidden;
+    padding: 0 1.5cqw;
+    left: 2.41%;     /* 20/831 */
+    width: 95.07%;   /* 790/831 */
+    height: 9.44%;   /* 86/911 */
+    white-space: nowrap;
+  }
+  .code-bar {
+    top: 2.31%;      /* 21/911 */
+    font-size: 6.7cqw;
+    letter-spacing: 0.12cqw;
+  }
+  .name-bar {
+    top: 13.39%;     /* 122/911 */
+    font-size: 4.8cqw;
+    letter-spacing: 0.06cqw;
+  }
+
+  /* ---------- Spec rows (45px tall, 10 rows A3..A12) ---------- */
+  .cell {
+    height: 4.94%;   /* 45/911 */
+    border: 0.36cqw solid var(--black); /* 3/831 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
+    overflow: hidden;
+    padding: 0 0.7cqw;
+    font-size: 2.65cqw;
+    white-space: nowrap;
+  }
+  /* Empty rows render no box at all */
+  .cell.is-empty { display: none; }
+
+  .cell-label {
+    width: 21.30%;   /* 177/831 */
+    background: var(--navy);
+    color: var(--white);
+    left: 2.29%;     /* 19/831 */
+    letter-spacing: 0.06cqw;
+  }
+  .cell-value {
+    width: 26.47%;   /* 220/831 */
+    background: var(--white);
+    color: var(--black);
+    left: 23.59%;    /* 196/831 */
+    font-weight: 700;
+  }
+
+  /* ---------- Bottom rows (88px tall, Q to Order / Box Size) ---------- */
+  .cell-big {
+    height: 9.66%;   /* 88/911 */
+    border: 0.36cqw solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
+    overflow: hidden;
+    padding: 0 0.7cqw;
+    white-space: nowrap;
+  }
+  .cell-big-label {
+    width: 21.30%;
+    left: 2.29%;
+    background: var(--navy);
+    color: var(--white);
+    font-size: 2.65cqw;
+  }
+  .cell-big-value {
+    width: 26.47%;
+    left: 23.59%;
+    background: var(--white);
+    color: var(--black);
+    font-size: 4.6cqw;
+    font-weight: 800;
+  }
+
+  /* ---------- Image rect ---------- */
+  .image-rect {
+    left: 51.50%;    /* 428/831 */
+    top: 24.48%;     /* 223/911 */
+    width: 44.65%;   /* 371/831 */
+    height: 40.72%;  /* 371/911 */
+    background: var(--white);
+    border: 0.12cqw solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .image-rect img {
+    max-width: 96%;
+    max-height: 96%;
+    object-fit: contain;
+  }
+  .image-rect .placeholder {
+    font-weight: 800;
+    font-size: 3.4cqw;
+    color: var(--black);
+  }
+
+  /* ---------- QR rect ---------- */
+  .qr-rect {
+    left: 57.28%;    /* 476/831 */
+    top: 66.08%;     /* 602/911 */
+    width: 33.09%;   /* 275/831 */
+    height: 30.19%;  /* 275/911 */
+    background: var(--white);
+    border: 0.12cqw solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 1cqw;
+  }
+  .qr-rect canvas,
+  .qr-rect img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: contain;
+  }
+  .qr-rect.empty::before {
+    content: "<SUPPLIER SITE QRCODE>";
+    font-weight: 800;
+    font-size: 2.6cqw;
+    color: var(--black);
+    text-align: center;
+  }
+
+  /* ---------- Print ---------- */
+  /* Force browsers to actually print background colours/images
+     (by default they strip dark fills to save ink). Apply globally
+     so it works in print-preview AND when "Save as PDF" is used. */
+  html, body, .stage, .label, .label * {
+    -webkit-print-color-adjust: exact !important;  /* Chrome, Safari, Edge */
+    print-color-adjust: exact !important;          /* Firefox, modern spec */
+    color-adjust: exact !important;                /* legacy alias */
+  }
+
+  @media print {
+    @page {
+      size: 127mm 127mm;
+      margin: 0;
+    }
+    body {
+      background: white;
+      padding: 0;
+      margin: 0;
+      display: block;
+    }
+    .controls { display: none !important; }
+    .stage {
+      width: 127mm;
+      height: 127mm;
+      page-break-after: avoid;
+    }
+    /* Re-assert at print time to override any browser default */
+    .code-bar, .name-bar, .cell-label, .cell-big-label {
+      background-color: var(--navy) !important;
+      color: var(--white) !important;
+    }
+    .label {
+      outline-color: var(--black) !important;
+    }
+    .cell, .cell-big, .image-rect, .qr-rect {
+      border-color: var(--black) !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <label for="code">XL-Code:</label>
+  <input id="code" type="text" value="SUPPS-0356" />
+  <button id="load">Load</button>
+  <button id="print" class="print-btn" type="button">Print 127×127mm</button>
+  <span class="hint">In the print dialog, choose paper size <strong>127 × 127 mm</strong> and 100% scale.</span>
+</div>
+
+<div class="stage">
+  <div class="label" id="label">
+
+    <div class="code-bar" id="xlCode">SUPPS-0356</div>
+    <div class="name-bar" id="description">Gatorade NO SUGAR - Berry</div>
+
+    <!-- 10 label cells (A3..A12) on the left -->
+    <div class="cell cell-label" style="top:24.04%" id="lbl-a3">TYPE</div>
+    <div class="cell cell-label" style="top:28.98%" id="lbl-a4">VARIANT</div>
+    <div class="cell cell-label" style="top:33.92%" id="lbl-a5">BRAND</div>
+    <div class="cell cell-label" style="top:38.86%" id="lbl-a6"></div>
+    <div class="cell cell-label" style="top:43.80%" id="lbl-a7"></div>
+    <div class="cell cell-label" style="top:48.74%" id="lbl-a8"></div>
+    <div class="cell cell-label" style="top:53.68%" id="lbl-a9"></div>
+    <div class="cell cell-label" style="top:58.62%" id="lbl-a10">SUPPLIER</div>
+    <div class="cell cell-label" style="top:63.56%" id="lbl-a11">XL PART ID</div>
+    <div class="cell cell-label" style="top:68.50%" id="lbl-a12">SUPPLIER SKU</div>
+
+    <!-- 10 value cells on the right -->
+    <div class="cell cell-value" style="top:24.04%" id="val-a3">Drinks, Hydration</div>
+    <div class="cell cell-value" style="top:28.98%" id="val-a4">No Sugar - Berry</div>
+    <div class="cell cell-value" style="top:33.92%" id="val-a5">Gatorade</div>
+    <div class="cell cell-value" style="top:38.86%" id="val-a6"></div>
+    <div class="cell cell-value" style="top:43.80%" id="val-a7"></div>
+    <div class="cell cell-value" style="top:48.74%" id="val-a8"></div>
+    <div class="cell cell-value" style="top:53.68%" id="val-a9"></div>
+    <div class="cell cell-value" style="top:58.62%" id="val-a10">FitnessVending</div>
+    <div class="cell cell-value" style="top:63.56%" id="val-a11">SUPPS-0356</div>
+    <div class="cell cell-value" style="top:68.50%" id="val-a12">2875839578208</div>
+
+    <!-- Bottom 2 label/value rows -->
+    <div class="cell-big cell-big-label" style="top:75.41%" id="lbl-a1">Q to Order</div>
+    <div class="cell-big cell-big-label" style="top:84.74%" id="lbl-a2">Box Size</div>
+    <div class="cell-big cell-big-value" style="top:75.41%" id="val-a1">1</div>
+    <div class="cell-big cell-big-value" style="top:84.74%" id="val-a2">12</div>
+
+    <!-- Image area -->
+    <div class="image-rect" id="productImage">
+      <span class="placeholder">&lt;IMAGE&gt;</span>
+    </div>
+
+    <!-- QR area -->
+    <div class="qr-rect empty" id="qr"></div>
+
+  </div>
+</div>
+
+<script>
+  /* ---------- DATA SOURCE ----------
+     STUB: replace this lookup with a real API call on the live site.
+     See loadProduct() below for the integration point. */
+  const PRODUCTS = {
+    "SUPPS-0356": {
+      code: "SUPPS-0356",
+      description: "Gatorade NO SUGAR - Berry",
+      rows: {
+        a3:  { label: "TYPE",         value: "Drinks, Hydration" },
+        a4:  { label: "VARIANT",      value: "No Sugar - Berry" },
+        a5:  { label: "BRAND",        value: "Gatorade" },
+        a6:  { label: "",             value: "" },
+        a7:  { label: "",             value: "" },
+        a8:  { label: "",             value: "" },
+        a9:  { label: "",             value: "" },
+        a10: { label: "SUPPLIER",     value: "FitnessVending" },
+        a11: { label: "XL PART ID",   value: "SUPPS-0356" },
+        a12: { label: "SUPPLIER SKU", value: "2875839578208" },
+        a1:  { label: "Q to Order",   value: "1" },
+        a2:  { label: "Box Size",     value: "12" }
+      },
+      image: "",
+      qrPayload: "https://xlfitness.com.au/parts/SUPPS-0356"
+    }
+  };
+
+  /* ---------- INTEGRATION ----------
+     Three ways for an external system (e.g. Manus) to feed data
+     to this page. Tried in this order:
+
+       1. URL `?data=<base64-encoded JSON>`  (preferred — zero backend)
+          The external system base64-encodes the product JSON and
+          puts it in the URL. No API needed. Example:
+            const json = JSON.stringify(productData);
+            const b64  = btoa(unescape(encodeURIComponent(json)));
+            const url  = `https://YOUR-LABEL-URL/?data=${b64}`;
+
+       2. URL `?code=<XL_PART_ID>` + API_ENDPOINT below
+          If API_ENDPOINT is set, the page fetches
+          `${API_ENDPOINT}${code}` and expects the same JSON shape.
+
+       3. Local PRODUCTS stub (fallback for testing only).
+  */
+  const API_ENDPOINT = ""; // e.g. "https://xlfitness.com.au/api/parts/"
+
+  function decodeDataParam(b64) {
+    try {
+      // Decode base64 → percent-encoded UTF-8 → string → JSON object
+      return JSON.parse(decodeURIComponent(escape(atob(b64))));
+    } catch (e) {
+      console.error("Failed to decode ?data= param:", e);
+      return null;
+    }
+  }
+
+  async function loadProduct(code) {
+    // Path 1: data passed directly via URL
+    const dataParam = new URLSearchParams(window.location.search).get("data");
+    if (dataParam) {
+      const decoded = decodeDataParam(dataParam);
+      if (decoded) return decoded;
+    }
+    // Path 2: code + remote API
+    if (API_ENDPOINT && code) {
+      try {
+        const res = await fetch(API_ENDPOINT + encodeURIComponent(code));
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.error("API fetch failed:", e);
+      }
+    }
+    // Path 3: local fallback
+    return PRODUCTS[code] || null;
+  }
+
+  async function render(code) {
+    const p = await loadProduct(code);
+    if (!p) {
+      alert("No product found for code: " + code);
+      return;
+    }
+    document.getElementById("xlCode").textContent = p.code;
+    document.getElementById("description").textContent = p.description;
+
+    Object.entries(p.rows).forEach(([k, { label, value }]) => {
+      const lbl = document.getElementById("lbl-" + k);
+      const val = document.getElementById("val-" + k);
+      const isEmpty = !label && !value;
+      if (lbl) {
+        lbl.textContent = label || "";
+        lbl.classList.toggle("is-empty", isEmpty);
+      }
+      if (val) {
+        val.textContent = value || "";
+        val.classList.toggle("is-empty", isEmpty);
+      }
+    });
+
+    const img = document.getElementById("productImage");
+    img.innerHTML = p.image
+      ? `<img src="${p.image}" alt="${p.description}" />`
+      : `<span class="placeholder">&lt;IMAGE&gt;</span>`;
+
+    const qr = document.getElementById("qr");
+    qr.classList.remove("empty");
+    qr.innerHTML = "";
+    new QRCode(qr, {
+      text: p.qrPayload || code,
+      width: 512,
+      height: 512,
+      correctLevel: QRCode.CorrectLevel.H
+    });
+  }
+
+  /* Shrink text in any element until it fits on one line within its box. */
+  function fitText(el, minPx = 6) {
+    if (!el || !el.textContent.trim()) return;
+    // Remove any prior inline shrink so we start from the CSS-declared size
+    el.style.fontSize = "";
+    // Force a reflow read
+    let guard = 60;
+    while (
+      (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
+      guard-- > 0
+    ) {
+      const cs = window.getComputedStyle(el);
+      const current = parseFloat(cs.fontSize);
+      const next = Math.max(minPx, current - 0.5);
+      if (next === current) break;
+      el.style.fontSize = next + "px";
+    }
+  }
+
+  function fitAll() {
+    document
+      .querySelectorAll(".code-bar, .name-bar, .cell, .cell-big")
+      .forEach((el) => fitText(el));
+  }
+
+  document.getElementById("load").addEventListener("click", async () => {
+    const code = document.getElementById("code").value.trim().toUpperCase();
+    await render(code);
+    requestAnimationFrame(fitAll);
+  });
+  document.getElementById("print").addEventListener("click", () => {
+    fitAll();
+    window.print();
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const initial = (params.get("code") || "SUPPS-0356").toUpperCase();
+  document.getElementById("code").value = initial;
+  render(initial);
+
+  // Re-fit on initial render and whenever the viewport changes (font metrics shift)
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(fitAll);
+  } else {
+    requestAnimationFrame(fitAll);
+  }
+  window.addEventListener("resize", () => requestAnimationFrame(fitAll));
+  window.addEventListener("beforeprint", fitAll);
+</script>
+
+</body>
+</html>
