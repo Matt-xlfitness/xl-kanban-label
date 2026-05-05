@@ -27,37 +27,54 @@ The print page already has its own design, fonts, layout, colours, and print rul
 
 ## ⚠️ The bug we keep hitting — read this carefully
 
-Your form has fields numbered `1`–`9` plus three tagged "A10/A11/A12" plus two tagged "A1/A2". **The 1–9 numbers are display positions on the form, NOT A-codes.** You must route every field to its correct A-slot by the field's NAME, not by its display position.
+A3–A9 are **PER-CATEGORY**, not fixed across the whole site.
 
-Specifically:
-- **`Q to order`** is field number `1` on your form, but it goes in **`a1`** (the bottom big row), NOT `a3`.
-- **`Box Size`** is field number `2` on your form, but it goes in **`a2`** (the bottom big row), NOT `a4`.
-- **`Item Type`** is field number `3` on your form, but it goes in **`a3`** with the canonical label `"TYPE"` (uppercase), NOT `"Item Type"`.
+You have category schemas (SUPPS, BLT, PAPP, MERCH, CONS, etc.) — each one defines its own labels for slots A3–A9 AND its own card colour. **Item PAPP-0010 must use the PAPP category's labels and colour, NOT the SUPPS labels.**
 
-If you map fields by their position number you will get every label wrong. Use the table below.
+Currently you're using SUPPS labels (`Item Type`, `Flavour / Variant`, `Brand`) for items in every category. That's the bug.
+
+The rule:
+
+- **A1, A2, A10, A11, A12** — labels are FIXED across all categories.
+- **A3–A9** — labels are LOOKED UP from the item's category schema.
+- **`color`** — LOOKED UP from the item's category (e.g. SUPPS = navy, BLT = blue, PAPP = pink).
+- The CODE PREFIX (e.g. `PAPP` in `PAPP-0010`) tells you which category an item belongs to.
+
+If you hardcode A3–A9 labels you will get every non-SUPPS item wrong.
 
 ---
 
 ## The mapping table — single source of truth
 
-| Manus form field | A-slot (JSON key) | Canonical label on card |
+### Standard slots (same for every category)
+
+| A-slot | Label on card | Source |
 |---|---|---|
-| `Q to order` (badge `A1 = Q to Order`) | **`a1`** | `Q to Order` |
-| `Box Size` (badge `A2 = Box Size`) | **`a2`** | `Box Size` |
-| `Item Type` | `a3` | **`TYPE`** |
-| `Flavour / Variant` | `a4` | **`VARIANT`** |
-| `Brand` | `a5` | **`BRAND`** |
-| `Attribute 6` | `a6` | (custom label entered by user — see note below) |
-| `Attribute 7` | `a7` | (custom label entered by user) |
-| `Attribute 8` | `a8` | (custom label entered by user) |
-| `Attribute 9` | `a9` | (custom label entered by user) |
-| `A10 — Supplier` (badge) | `a10` | `SUPPLIER` |
-| `A11 — XL Part ID` (badge) | `a11` | `XL PART ID` |
-| `A12 — Supplier SKU` (badge) | `a12` | `SUPPLIER SKU` |
+| `a1` | `Q to Order` | Item's `Q to order` field |
+| `a2` | `Box Size` | Item's `Box Size` field |
+| `a10` | `SUPPLIER` | Item's `Supplier` field |
+| `a11` | `XL PART ID` | Item's code (e.g. `PAPP-0010`) |
+| `a12` | `SUPPLIER SKU` | Item's `Supplier SKU` field |
 
-### Note on Attributes 6–9
+### Custom slots (per category)
 
-These four slots are for **custom item-specific attributes**. Each needs **two inputs on Manus's form**: a **Label** (e.g. `MATERIAL`) and a **Value** (e.g. `Stainless Steel`). If your form currently has only a value input for these slots, please add a label input alongside it. If both label AND value are blank, the row hides automatically on the card — that is the desired behaviour for items with fewer than 9 attributes.
+| A-slot | Label on card | Value on card |
+|---|---|---|
+| `a3` | `category.a3Label` (e.g. `Item Type` for SUPPS, `Size (Diameter)` for BLT, `Size` for PAPP) | Item's value for that field |
+| `a4` | `category.a4Label` (e.g. `Flavour / Variant` for SUPPS, `Length` for BLT, `Type` for PAPP) | Item's value |
+| `a5` | `category.a5Label` (e.g. `Brand` for SUPPS, `Grade` for BLT, blank for PAPP) | Item's value |
+| `a6` | `category.a6Label` (e.g. `Material` for BLT, blank for SUPPS) | Item's value |
+| `a7` | `category.a7Label` (e.g. `Finish / Coating` for BLT) | Item's value |
+| `a8` | `category.a8Label` (e.g. `Head Type` for BLT) | Item's value |
+| `a9` | `category.a9Label` (e.g. `Thread Pitch` for BLT) | Item's value |
+
+If a category doesn't define a label for a slot (e.g. PAPP has no A5–A9), send both label AND value as `""` — the row hides automatically on the card.
+
+### Card colour (per category)
+
+The `color` hex on each printed card comes from the item's category, not from the item itself. Make sure each category in your schema has a `color` field (hex string like `#121826`, `#1f6feb`, `#f7c8d9`). If a category doesn't have one set, default to `#121826` (navy).
+
+If your category schema doesn't yet expose a colour picker per category, add one as part of this fix. One colour per category, applied to every item in that category.
 
 ---
 
@@ -73,40 +90,45 @@ function makePrintLabelHref(product) {
 }
 ```
 
-### 2. On each product page, build the `product` object from the form data
+### 2. On each product page, build the `product` object using the item AND its category
 
-Use **this exact template**. Read each field by its name from the form, route to its A-slot per the table above, hard-code the canonical label.
+Use **this exact template**. The labels for A3–A9 and the `color` come from the **category**. Values come from the item.
 
 ```js
-const product = {
-  code:        item.xlPartId,           // SUPPS-0254
-  description: item.name,               // CBUM Thavage PUMP RTD 355ml Juicy Pumps
-  rows: {
-    // Top spec rows — fixed canonical headings
-    a3:  { label: "TYPE",         value: item.itemType        ?? "" },
-    a4:  { label: "VARIANT",      value: item.flavourVariant  ?? "" },
-    a5:  { label: "BRAND",        value: item.brand           ?? "" },
+function buildProduct(item) {
+  // 1. Find the category for this item.
+  //    The code prefix (SUPPS, BLT, PAPP, MERCH, CONS, ...) is the lookup key.
+  const categoryCode = item.code.split("-")[0];          // e.g. "PAPP" from "PAPP-0010"
+  const cat = getCategoryByCode(categoryCode);            // your existing category lookup
 
-    // Custom attribute rows — both label AND value come from the form
-    a6:  { label: item.attr6Label ?? "", value: item.attr6Value ?? "" },
-    a7:  { label: item.attr7Label ?? "", value: item.attr7Value ?? "" },
-    a8:  { label: item.attr8Label ?? "", value: item.attr8Value ?? "" },
-    a9:  { label: item.attr9Label ?? "", value: item.attr9Value ?? "" },
+  return {
+    code:        item.code,                               // SUPPS-0254 / BLT-0033 / PAPP-0010
+    description: item.name,
+    rows: {
+      // ── Standard slots — same labels for every category ─────────────
+      a1:  { label: "Q to Order",   value: String(item.qToOrder    ?? "") },
+      a2:  { label: "Box Size",     value: String(item.boxSize     ?? "") },
+      a10: { label: "SUPPLIER",     value: item.supplier           ?? ""  },
+      a11: { label: "XL PART ID",   value: item.code               ?? ""  },
+      a12: { label: "SUPPLIER SKU", value: item.supplierSku        ?? ""  },
 
-    // Fixed standard rows
-    a10: { label: "SUPPLIER",     value: item.supplier        ?? "" },
-    a11: { label: "XL PART ID",   value: item.xlPartId        ?? "" },
-    a12: { label: "SUPPLIER SKU", value: item.supplierSku     ?? "" },
-
-    // Bottom big rows — Q to Order and Box Size go HERE, not in a3/a4
-    a1:  { label: "Q to Order",   value: String(item.qToOrder ?? "") },
-    a2:  { label: "Box Size",     value: String(item.boxSize  ?? "") }
-  },
-  image:     item.imageUrl   ?? "",     // optional product image URL
-  qrPayload: item.publicUrl  ?? "",     // URL to encode in QR (item's page on the XL site)
-  color:     item.color      ?? "#121826"
-};
+      // ── Custom slots — label from CATEGORY, value from ITEM ─────────
+      a3:  { label: cat.a3Label ?? "", value: item.a3 ?? "" },
+      a4:  { label: cat.a4Label ?? "", value: item.a4 ?? "" },
+      a5:  { label: cat.a5Label ?? "", value: item.a5 ?? "" },
+      a6:  { label: cat.a6Label ?? "", value: item.a6 ?? "" },
+      a7:  { label: cat.a7Label ?? "", value: item.a7 ?? "" },
+      a8:  { label: cat.a8Label ?? "", value: item.a8 ?? "" },
+      a9:  { label: cat.a9Label ?? "", value: item.a9 ?? "" }
+    },
+    image:     item.imageUrl  ?? "",
+    qrPayload: item.publicUrl ?? "",
+    color:     cat.color      ?? "#121826"               // ← from CATEGORY
+  };
+}
 ```
+
+**Critical:** the `cat.aNLabel` strings come from your category schema, NOT from a hardcoded list. PAPP returns "Size" / "Type"; BLT returns "Size (Diameter)" / "Length" / "Grade" / "Material" / etc.; SUPPS returns "Item Type" / "Flavour / Variant" / "Brand". Whatever the category defines is what gets sent.
 
 ### 3. Render the button
 
@@ -125,27 +147,27 @@ That's the entire job.
 
 ---
 
-## Ground-truth target — SUPPS-0254
+## Worked examples — three categories
 
-For SUPPS-0254 (CBUM Thavage Juicy Pumps), the JSON inside `?data=` MUST decode to **exactly this**:
+### Example 1: SUPPS-0254 (Supplements)
 
 ```json
 {
   "code": "SUPPS-0254",
   "description": "CBUM Thavage PUMP RTD 355ml Juicy Pumps",
   "rows": {
-    "a3":  { "label": "TYPE",         "value": "Drinks, Energy" },
-    "a4":  { "label": "VARIANT",      "value": "Juicy Pumps" },
-    "a5":  { "label": "BRAND",        "value": "CBUM Thavage" },
-    "a6":  { "label": "",             "value": "" },
-    "a7":  { "label": "",             "value": "" },
-    "a8":  { "label": "",             "value": "" },
-    "a9":  { "label": "",             "value": "" },
-    "a10": { "label": "SUPPLIER",     "value": "FitnessVending" },
-    "a11": { "label": "XL PART ID",   "value": "SUPPS-0254" },
-    "a12": { "label": "SUPPLIER SKU", "value": "3481611960416" },
-    "a1":  { "label": "Q to Order",   "value": "1" },
-    "a2":  { "label": "Box Size",     "value": "12" }
+    "a3":  { "label": "Item Type",         "value": "Drinks, Energy" },
+    "a4":  { "label": "Flavour / Variant", "value": "Juicy Pumps" },
+    "a5":  { "label": "Brand",             "value": "CBUM Thavage" },
+    "a6":  { "label": "",                  "value": "" },
+    "a7":  { "label": "",                  "value": "" },
+    "a8":  { "label": "",                  "value": "" },
+    "a9":  { "label": "",                  "value": "" },
+    "a10": { "label": "SUPPLIER",          "value": "Fitness Vending" },
+    "a11": { "label": "XL PART ID",        "value": "SUPPS-0254" },
+    "a12": { "label": "SUPPLIER SKU",      "value": "3481611960416" },
+    "a1":  { "label": "Q to Order",        "value": "1" },
+    "a2":  { "label": "Box Size",          "value": "12" }
   },
   "image":     "<image URL>",
   "qrPayload": "<XL site item URL>",
@@ -153,7 +175,61 @@ For SUPPS-0254 (CBUM Thavage Juicy Pumps), the JSON inside `?data=` MUST decode 
 }
 ```
 
-If your generated JSON for SUPPS-0254 doesn't match this shape exactly, the button is wrong. Fix the data, do not touch the print URL.
+### Example 2: BLT-0033 (Bolts) — different labels, different colour
+
+```json
+{
+  "code": "BLT-0033",
+  "description": "<bolt name>",
+  "rows": {
+    "a3":  { "label": "Size (Diameter)", "value": "M10" },
+    "a4":  { "label": "Length",          "value": "50mm" },
+    "a5":  { "label": "Grade",           "value": "8.8" },
+    "a6":  { "label": "Material",        "value": "Stainless 316" },
+    "a7":  { "label": "Finish / Coating","value": "Zinc Plated" },
+    "a8":  { "label": "Head Type",       "value": "Hex" },
+    "a9":  { "label": "Thread Pitch",    "value": "1.5mm" },
+    "a10": { "label": "SUPPLIER",        "value": "<supplier>" },
+    "a11": { "label": "XL PART ID",      "value": "BLT-0033" },
+    "a12": { "label": "SUPPLIER SKU",    "value": "<sku>" },
+    "a1":  { "label": "Q to Order",      "value": "1" },
+    "a2":  { "label": "Box Size",        "value": "100" }
+  },
+  "image":     "<image URL>",
+  "qrPayload": "<XL site item URL>",
+  "color":     "#1f6feb"
+}
+```
+
+### Example 3: PAPP-0010 (Paper & Printing) — only 2 custom slots used, pink colour
+
+```json
+{
+  "code": "PAPP-0010",
+  "description": "<paper item name>",
+  "rows": {
+    "a3":  { "label": "Size",         "value": "A4" },
+    "a4":  { "label": "Type",         "value": "Gloss 200gsm" },
+    "a5":  { "label": "",             "value": "" },
+    "a6":  { "label": "",             "value": "" },
+    "a7":  { "label": "",             "value": "" },
+    "a8":  { "label": "",             "value": "" },
+    "a9":  { "label": "",             "value": "" },
+    "a10": { "label": "SUPPLIER",     "value": "<supplier>" },
+    "a11": { "label": "XL PART ID",   "value": "PAPP-0010" },
+    "a12": { "label": "SUPPLIER SKU", "value": "<sku>" },
+    "a1":  { "label": "Q to Order",   "value": "1" },
+    "a2":  { "label": "Box Size",     "value": "500" }
+  },
+  "image":     "<image URL>",
+  "qrPayload": "<XL site item URL>",
+  "color":     "#f7c8d9"
+}
+```
+
+Notice how each category produces a different `color` and different A3–A9 labels — but the standard slots (`a1`, `a2`, `a10`–`a12`) are identical across categories. That's the pattern.
+
+If your generated JSON for any item doesn't follow this pattern (right labels for the right category, right colour), the bug is in your category lookup. Fix the data, do not touch the print URL.
 
 ---
 
@@ -161,35 +237,40 @@ If your generated JSON for SUPPS-0254 doesn't match this shape exactly, the butt
 
 - ✅ Empty A-slots: send `{ "label": "", "value": "" }` — both empty strings. The print page auto-hides the row.
 - ❌ Do NOT use placeholder strings like `"Attribute 6"`, `"N/A"`, `"-"`, or `"unset"` for empty slots — they will render as visible empty boxes.
+- ✅ A3–A9 labels come from the **item's category schema**, not from a hardcoded list.
+- ❌ Do NOT use SUPPS labels (`Item Type`, `Flavour / Variant`, `Brand`) for non-SUPPS items. PAPP items use PAPP labels, BLT items use BLT labels, etc.
 - ✅ `a1` is **always** Q to Order. `a2` is **always** Box Size. They render as the two big rows at the bottom.
-- ❌ Do NOT put TYPE / VARIANT / BRAND / Q to Order / Box Size in the wrong A-slot, even if the form lays them out in a different order visually.
+- ❌ Do NOT put Q to Order / Box Size in any slot other than `a1`/`a2`, regardless of where the form displays them.
 - ✅ `a11.value` should equal `code` (XL Part ID is shown twice — top header and row a11).
 - ✅ `qrPayload` should be the URL of the item's page on the Manus site so scanning the QR opens that item.
+- ✅ `color` comes from the item's **category**, not from a hardcoded value or per-item override.
 - ✅ `color` is hex like `"#7a1f3d"`. Defaults to `#121826` if missing or invalid.
 
 ---
 
-## How to test
+## How to test (must pass for all THREE categories)
 
-1. Pick **SUPPS-0254** as your first test.
-2. Add the button.
-3. Click it. A new tab opens.
-4. Confirm visually:
-   - Top header: `SUPPS-0254`
-   - Description bar: `CBUM Thavage PUMP RTD 355ml Juicy Pumps`
-   - **First spec row**: `TYPE` / `Drinks, Energy` (NOT `Q to order` / `1`)
-   - **Second spec row**: `VARIANT` / `Juicy Pumps`
-   - **Third spec row**: `BRAND` / `CBUM Thavage`
-   - Empty rows (a6–a9): no visible boxes, just a gap
-   - Then `SUPPLIER` / `FitnessVending`
-   - Then `XL PART ID` / `SUPPS-0254`
-   - Then `SUPPLIER SKU` / `3481611960416`
-   - **Bottom big row 1**: `Q to Order` / `1`
-   - **Bottom big row 2**: `Box Size` / `12`
-   - Image and QR on the right
-5. Print preview should show a 127 × 127 mm page with solid navy bars.
+Per-category schemas are the new behaviour, so you MUST test more than one category. Pick one item from each:
 
-If anything's wrong: **the bug is in your `product` object, not in the print page.** Fix the data.
+| Item | Category | Expected A3–A9 labels | Expected colour |
+|---|---|---|---|
+| **SUPPS-0254** | Supplements | A3=`Item Type`, A4=`Flavour / Variant`, A5=`Brand`, A6–A9 empty | Navy `#121826` |
+| **BLT-0033** (or any BLT item) | Bolts | A3=`Size (Diameter)`, A4=`Length`, A5=`Grade`, A6=`Material`, A7=`Finish / Coating`, A8=`Head Type`, A9=`Thread Pitch` | Blue (BLT category colour) |
+| **PAPP-0010** (or any PAPP item) | Paper & Printing | A3=`Size`, A4=`Type`, A5–A9 empty | Pink (PAPP category colour) |
+
+For each item:
+
+1. Click the Print Label button.
+2. Confirm visually:
+   - Top header: the item's code
+   - Card colour: matches the **category** (NOT always navy)
+   - A3–A9 labels: match the **category schema** (NOT always SUPPS labels)
+   - A1 (bottom big row): `Q to Order` with the item's quantity
+   - A2 (bottom big row): `Box Size` with the item's box size
+   - Empty rows (where the category has no label): hidden — no visible boxes
+   - SUPPLIER / XL PART ID / SUPPLIER SKU populated correctly
+
+If anything's wrong: **the bug is in your `buildProduct` function**, specifically in the category lookup. Fix the data, do not touch the print page.
 
 ---
 
@@ -197,10 +278,10 @@ If anything's wrong: **the bug is in your `product` object, not in the print pag
 
 - Every product page has a working "Print Label" button.
 - Clicking it opens the external print page with that item's data correctly populated.
-- SUPPS-0254 specifically renders matching the ground-truth JSON above.
+- **All three test items** (SUPPS, BLT, PAPP) render with the right per-category labels and colours.
 - You did not visit, preview, restyle, iframe, or modify the print URL.
 
-Send back: a screenshot of the rendered SUPPS-0254 label opened from the button + the URL of the SUPPS-0254 product page.
+Send back: screenshots of the rendered labels for **SUPPS-0254, one BLT item, and one PAPP item** + the URL of each product page.
 
 ---
 
