@@ -51,12 +51,12 @@
       it the navy bars print as light grey.
     - "Print 127×127mm" button on the page calls window.print().
 
-  COLOUR (planned)
-    Each card's accent colour will eventually vary by product
-    (category / supplier / urgency — TBD). The PRODUCTS schema
-    already includes an optional `color` field; when wired up,
-    swap it into --navy via inline style on .label. Until then
-    every card is the default navy #121826.
+  COLOUR (live)
+    Each card's accent colour is driven by the optional `color`
+    field on the product (hex string, e.g. "#0a7d3a"). It cascades
+    through every navy element — header bars, label cells, big
+    cells — by setting --navy on the .label element. Defaults to
+    #121826 when omitted or invalid.
 ================================================================
 -->
 <html lang="en">
@@ -497,6 +497,13 @@
         val.classList.toggle("is-empty", isEmpty);
       }
     });
+
+    // Apply per-product accent colour (defaults to navy if not provided).
+    // Cascades through every element using var(--navy) — header bars,
+    // label cells, big-cell labels — they all change together.
+    const accent = (p.color && /^#[0-9a-fA-F]{3,8}$/.test(p.color))
+      ? p.color : "#121826";
+    document.getElementById("label").style.setProperty("--navy", accent);
 
     const img = document.getElementById("productImage");
     img.innerHTML = p.image
