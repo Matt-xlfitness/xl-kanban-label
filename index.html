@@ -256,7 +256,7 @@
     width: 44.65%;   /* 371/831 */
     height: 40.72%;  /* 371/911 */
     background: var(--white);
-    border: 0.12cqw solid var(--black);
+    border: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -280,7 +280,7 @@
     width: 33.09%;   /* 275/831 */
     height: 30.19%;  /* 275/911 */
     background: var(--white);
-    border: 0.12cqw solid var(--black);
+    border: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -336,8 +336,11 @@
     .label {
       outline-color: var(--black) !important;
     }
-    .cell, .cell-big, .image-rect, .qr-rect {
+    .cell, .cell-big {
       border-color: var(--black) !important;
+    }
+    .image-rect, .qr-rect {
+      border: 0 !important;
     }
   }
 </style>

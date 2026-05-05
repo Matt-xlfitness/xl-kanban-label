@@ -178,7 +178,7 @@
   .image-rect {
     left: 51.50%; top: 24.48%; width: 44.65%; height: 40.72%;
     background: var(--white);
-    border: 0.12cqw solid var(--black);
+    border: 0;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden;
   }
@@ -188,7 +188,7 @@
   .qr-rect {
     left: 57.28%; top: 66.08%; width: 33.09%; height: 30.19%;
     background: var(--white);
-    border: 0.12cqw solid var(--black);
+    border: 0;
     display: flex; align-items: center; justify-content: center;
     overflow: hidden; padding: 1cqw;
   }
@@ -242,7 +242,8 @@
       color: var(--white) !important;
     }
     .label { outline-color: var(--black) !important; }
-    .cell, .cell-big, .image-rect, .qr-rect { border-color: var(--black) !important; }
+    .cell, .cell-big { border-color: var(--black) !important; }
+    .image-rect, .qr-rect { border: 0 !important; }
   }
 </style>
 </head>
