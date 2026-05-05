@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<!--
+================================================================
+  XL FITNESS — KANBAN PRINT SHEET (multiple cards per A4 page)
+  Render N labels in one document for batch printing.
+  Each card is the same 127 × 127 mm design as the single label.
+  A4 paper = 2 cards per page (max for 127mm at portrait A4).
+================================================================
+
+  HOW TO PASS DATA
+    ?data=<base64 JSON ARRAY of products>   (preferred)
+       const arr = [productA, productB, productC, ...];
+       const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(arr))));
+       const url = `https://matt-xlfitness.github.io/xl-kanban-label/sheet.html?data=${b64}`;
+
+    ?codes=SUPPS-0254,SUPPS-0356             (testing — uses local samples)
+
+  Each product in the array MUST follow the same shape as the
+  single-label page (see MANUS_PRINT_BUTTON.md).
+================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>XL Kanban Sheet — Print Multiple</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+<style>
+  /* ===== Same label visual spec as index.html ===== */
+  :root {
+    --navy:  #121826;
+    --black: #000;
+    --white: #fff;
+    --page-bg: #d6d6d6;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { min-height: 100%; }
+
+  body {
+    font-family: 'Lexend', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--page-bg);
+    padding: 24px 16px 60px;
+  }
+
+  /* Controls — only visible on screen */
+  .controls {
+    max-width: 210mm;
+    margin: 0 auto 20px;
+    background: var(--white);
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 700;
+    flex-wrap: wrap;
+  }
+  .controls .info { color: #444; font-weight: 500; }
+  .controls button {
+    padding: 8px 16px;
+    background: var(--navy);
+    color: var(--white);
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 800;
+  }
+  .controls .print-btn { background: #2a7a3a; }
+
+  /* Empty-state */
+  .empty-state {
+    max-width: 600px;
+    margin: 60px auto;
+    padding: 28px;
+    background: white;
+    border: 2px dashed #aaa;
+    border-radius: 12px;
+    color: #555;
+    line-height: 1.5;
+  }
+  .empty-state code {
+    background: #eee;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  /* ===== A4 sheet container ===== */
+  .sheet {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12mm;
+  }
+
+  /* ===== Each card = 127 × 127 mm exactly, same as single-label ===== */
+  .stage {
+    width: 127mm;
+    height: 127mm;
+    position: relative;
+    container-type: size;
+    background: var(--white);
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .label {
+    position: absolute;
+    inset: 0;
+    background: var(--white);
+    border-radius: 3.61cqw;
+    outline: 1.92cqw solid var(--black);
+    outline-offset: -1.92cqw;
+  }
+  .label > * { position: absolute; }
+
+  .code-bar, .name-bar {
+    background: var(--navy);
+    border-radius: 1.20cqw;
+    color: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
+    overflow: hidden;
+    padding: 0 1.5cqw;
+    left: 2.41%;
+    width: 95.07%;
+    height: 9.44%;
+    white-space: nowrap;
+  }
+  .code-bar { top: 2.31%; font-size: 6.7cqw; letter-spacing: 0.12cqw; }
+  .name-bar { top: 13.39%; font-size: 4.8cqw; letter-spacing: 0.06cqw; }
+
+  .cell {
+    height: 4.94%;
+    border: 0.36cqw solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
+    overflow: hidden;
+    padding: 0 0.7cqw;
+    font-size: 2.65cqw;
+    white-space: nowrap;
+  }
+  .cell.is-empty { display: none; }
+  .cell-label  { width: 21.30%; background: var(--navy); color: var(--white); left: 2.29%;  letter-spacing: 0.06cqw; }
+  .cell-value  { width: 26.47%; background: var(--white); color: var(--black); left: 23.59%; font-weight: 700; }
+
+  .cell-big {
+    height: 9.66%;
+    border: 0.36cqw solid var(--black);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 800;
+    line-height: 1;
+    overflow: hidden;
+    padding: 0 0.7cqw;
+    white-space: nowrap;
+  }
+  .cell-big-label { width: 21.30%; left: 2.29%;  background: var(--navy); color: var(--white); font-size: 2.65cqw; }
+  .cell-big-value { width: 26.47%; left: 23.59%; background: var(--white); color: var(--black); font-size: 4.6cqw; font-weight: 800; }
+
+  .image-rect {
+    left: 51.50%; top: 24.48%; width: 44.65%; height: 40.72%;
+    background: var(--white);
+    border: 0.12cqw solid var(--black);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .image-rect img { max-width: 96%; max-height: 96%; object-fit: contain; }
+  .image-rect .placeholder { font-weight: 800; font-size: 3.4cqw; color: var(--black); }
+
+  .qr-rect {
+    left: 57.28%; top: 66.08%; width: 33.09%; height: 30.19%;
+    background: var(--white);
+    border: 0.12cqw solid var(--black);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; padding: 1cqw;
+  }
+  .qr-rect canvas, .qr-rect img {
+    width: 100% !important; height: 100% !important; object-fit: contain;
+  }
+
+  /* ===== Print ===== */
+  html, body, .stage, .label, .label * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  @media print {
+    @page {
+      size: A4;
+      margin: 0;
+    }
+    body {
+      background: white;
+      padding: 0;
+      margin: 0;
+    }
+    .controls, .empty-state { display: none !important; }
+
+    .sheet {
+      gap: 0;
+    }
+
+    /* Two 127mm cards per A4 page (210x297). 2 cards = 254mm height.
+       Spare vertical = 43mm → split as 12mm top + 19mm gap + 12mm bottom. */
+    .stage {
+      margin: 12mm auto 0;
+    }
+    /* Force a page break after every 2nd card */
+    .stage:nth-of-type(2n) {
+      page-break-after: always;
+      break-after: page;
+      margin-bottom: 12mm;
+    }
+    /* But never break after the last card (avoids trailing blank page) */
+    .stage:last-child {
+      page-break-after: auto !important;
+      break-after: auto !important;
+    }
+
+    /* Re-assert at print time */
+    .code-bar, .name-bar, .cell-label, .cell-big-label {
+      background-color: var(--navy) !important;
+      color: var(--white) !important;
+    }
+    .label { outline-color: var(--black) !important; }
+    .cell, .cell-big, .image-rect, .qr-rect { border-color: var(--black) !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <button id="print" class="print-btn" type="button">Print Sheet</button>
+  <span class="info" id="status">Loading…</span>
+  <span class="info">Print dialog: paper <strong>A4</strong>, margins <strong>None</strong>, scale <strong>100%</strong>, background graphics <strong>ON</strong>.</span>
+</div>
+
+<div class="sheet" id="sheet"></div>
+
+<script>
+  /* ---------- Local samples (only used when ?codes=… is passed) ---------- */
+  const SAMPLE_PRODUCTS = {
+    "SUPPS-0356": {
+      code: "SUPPS-0356",
+      description: "Gatorade NO SUGAR - Berry",
+      rows: {
+        a3:  { label: "TYPE",         value: "Drinks, Hydration" },
+        a4:  { label: "VARIANT",      value: "No Sugar - Berry" },
+        a5:  { label: "BRAND",        value: "Gatorade" },
+        a6:  { label: "",             value: "" },
+        a7:  { label: "",             value: "" },
+        a8:  { label: "",             value: "" },
+        a9:  { label: "",             value: "" },
+        a10: { label: "SUPPLIER",     value: "FitnessVending" },
+        a11: { label: "XL PART ID",   value: "SUPPS-0356" },
+        a12: { label: "SUPPLIER SKU", value: "2875839578208" },
+        a1:  { label: "Q to Order",   value: "1" },
+        a2:  { label: "Box Size",     value: "12" }
+      },
+      image: "",
+      qrPayload: "https://xlfitness.com.au/parts/SUPPS-0356",
+      color: "#121826"
+    },
+    "SUPPS-0254": {
+      code: "SUPPS-0254",
+      description: "CBUM Thavage PUMP RTD 355ml Juicy Pumps",
+      rows: {
+        a3:  { label: "TYPE",         value: "Drinks, Energy" },
+        a4:  { label: "VARIANT",      value: "Juicy Pumps" },
+        a5:  { label: "BRAND",        value: "CBUM Thavage" },
+        a6:  { label: "",             value: "" },
+        a7:  { label: "",             value: "" },
+        a8:  { label: "",             value: "" },
+        a9:  { label: "",             value: "" },
+        a10: { label: "SUPPLIER",     value: "FitnessVending" },
+        a11: { label: "XL PART ID",   value: "SUPPS-0254" },
+        a12: { label: "SUPPLIER SKU", value: "3481611960416" },
+        a1:  { label: "Q to Order",   value: "1" },
+        a2:  { label: "Box Size",     value: "12" }
+      },
+      image: "",
+      qrPayload: "https://xlfitness.com.au/parts/SUPPS-0254",
+      color: "#121826"
+    }
+  };
+
+  /* ---------- Slot positions (% of stage height) ---------- */
+  const SPEC_TOPS = {
+    a3: 24.04, a4: 28.98, a5: 33.92, a6: 38.86, a7: 43.80,
+    a8: 48.74, a9: 53.68, a10: 58.62, a11: 63.56, a12: 68.50
+  };
+  const BIG_TOPS = { a1: 75.41, a2: 84.74 };
+
+  /* ---------- Build one label DOM tree from a product object ---------- */
+  function buildLabel(product) {
+    const stage = document.createElement('div');
+    stage.className = 'stage';
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    const accent = (product.color && /^#[0-9a-fA-F]{3,8}$/.test(product.color))
+      ? product.color : "#121826";
+    label.style.setProperty('--navy', accent);
+
+    const codeBar = document.createElement('div');
+    codeBar.className = 'code-bar';
+    codeBar.textContent = product.code || "";
+    label.appendChild(codeBar);
+
+    const nameBar = document.createElement('div');
+    nameBar.className = 'name-bar';
+    nameBar.textContent = product.description || "";
+    label.appendChild(nameBar);
+
+    // 10 spec rows (a3..a12)
+    Object.entries(SPEC_TOPS).forEach(([key, top]) => {
+      const row = (product.rows && product.rows[key]) || { label: '', value: '' };
+      const isEmpty = !row.label && !row.value;
+
+      const lblCell = document.createElement('div');
+      lblCell.className = 'cell cell-label' + (isEmpty ? ' is-empty' : '');
+      lblCell.style.top = top + '%';
+      lblCell.textContent = row.label || '';
+      label.appendChild(lblCell);
+
+      const valCell = document.createElement('div');
+      valCell.className = 'cell cell-value' + (isEmpty ? ' is-empty' : '');
+      valCell.style.top = top + '%';
+      valCell.textContent = row.value || '';
+      label.appendChild(valCell);
+    });
+
+    // 2 big bottom rows (a1, a2)
+    Object.entries(BIG_TOPS).forEach(([key, top]) => {
+      const row = (product.rows && product.rows[key]) || { label: '', value: '' };
+
+      const lblCell = document.createElement('div');
+      lblCell.className = 'cell-big cell-big-label';
+      lblCell.style.top = top + '%';
+      lblCell.textContent = row.label || '';
+      label.appendChild(lblCell);
+
+      const valCell = document.createElement('div');
+      valCell.className = 'cell-big cell-big-value';
+      valCell.style.top = top + '%';
+      valCell.textContent = row.value || '';
+      label.appendChild(valCell);
+    });
+
+    // Image
+    const imgRect = document.createElement('div');
+    imgRect.className = 'image-rect';
+    if (product.image) {
+      const img = document.createElement('img');
+      img.src = product.image;
+      img.alt = product.description || '';
+      imgRect.appendChild(img);
+    } else {
+      const ph = document.createElement('span');
+      ph.className = 'placeholder';
+      ph.textContent = '<IMAGE>';
+      imgRect.appendChild(ph);
+    }
+    label.appendChild(imgRect);
+
+    // QR (filled after the stage is in the DOM so dimensions exist)
+    const qrRect = document.createElement('div');
+    qrRect.className = 'qr-rect';
+    label.appendChild(qrRect);
+
+    stage.appendChild(label);
+
+    return { stage, qrRect, qrText: product.qrPayload || product.code || '' };
+  }
+
+  /* ---------- Auto-fit text in each cell ---------- */
+  function fitText(el, minPx = 6) {
+    if (!el || !el.textContent.trim()) return;
+    el.style.fontSize = '';
+    let guard = 60;
+    while (
+      (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
+      guard-- > 0
+    ) {
+      const cs = window.getComputedStyle(el);
+      const current = parseFloat(cs.fontSize);
+      const next = Math.max(minPx, current - 0.5);
+      if (next === current) break;
+      el.style.fontSize = next + 'px';
+    }
+  }
+  function fitAll() {
+    document.querySelectorAll('.code-bar, .name-bar, .cell, .cell-big')
+      .forEach(el => fitText(el));
+  }
+
+  /* ---------- Decode product list from URL ---------- */
+  function loadProducts() {
+    const params = new URLSearchParams(window.location.search);
+
+    const dataParam = params.get('data');
+    if (dataParam) {
+      try {
+        const decoded = JSON.parse(decodeURIComponent(escape(atob(dataParam))));
+        return Array.isArray(decoded) ? decoded : [decoded];
+      } catch (e) {
+        console.error('Invalid ?data= param:', e);
+        return [];
+      }
+    }
+
+    const codesParam = params.get('codes');
+    if (codesParam) {
+      return codesParam.split(',')
+        .map(c => SAMPLE_PRODUCTS[c.trim()])
+        .filter(Boolean);
+    }
+
+    return null; // signal "no input"
+  }
+
+  /* ---------- Render ---------- */
+  function renderSheet() {
+    const sheet = document.getElementById('sheet');
+    sheet.innerHTML = '';
+
+    const products = loadProducts();
+
+    if (products === null) {
+      // Empty state — no input given
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = `
+        <h3 style="margin-bottom:8px">No products to print</h3>
+        <p>Pass products to this page in the URL:</p>
+        <p style="margin-top:8px"><code>?data=&lt;base64 JSON array&gt;</code> — preferred for live data from Manus</p>
+        <p style="margin-top:4px"><code>?codes=SUPPS-0254,SUPPS-0356</code> — for testing with built-in samples</p>
+        <p style="margin-top:14px"><a href="?codes=SUPPS-0254,SUPPS-0356">→ Try the built-in sample (2 cards)</a></p>
+      `;
+      sheet.appendChild(empty);
+      document.getElementById('status').textContent = '0 cards loaded';
+      return;
+    }
+
+    if (products.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = `<h3>No valid products in URL</h3><p>Check the <code>?data=</code> or <code>?codes=</code> parameter.</p>`;
+      sheet.appendChild(empty);
+      document.getElementById('status').textContent = '0 cards loaded';
+      return;
+    }
+
+    const qrJobs = [];
+    products.forEach(p => {
+      const { stage, qrRect, qrText } = buildLabel(p);
+      sheet.appendChild(stage);
+      qrJobs.push({ qrRect, qrText });
+    });
+
+    // Generate QRs after stages are mounted (so sizing is known)
+    qrJobs.forEach(({ qrRect, qrText }) => {
+      qrRect.innerHTML = '';
+      new QRCode(qrRect, {
+        text: qrText,
+        width: 512,
+        height: 512,
+        correctLevel: QRCode.CorrectLevel.H
+      });
+    });
+
+    const pages = Math.ceil(products.length / 2);
+    document.getElementById('status').textContent =
+      `${products.length} card${products.length === 1 ? '' : 's'} across ${pages} A4 page${pages === 1 ? '' : 's'} (2 per page)`;
+
+    // Fit text after fonts load
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(fitAll);
+    } else {
+      requestAnimationFrame(fitAll);
+    }
+  }
+
+  document.getElementById('print').addEventListener('click', () => {
+    fitAll();
+    window.print();
+  });
+  window.addEventListener('resize', () => requestAnimationFrame(fitAll));
+  window.addEventListener('beforeprint', fitAll);
+
+  renderSheet();
+</script>
+
+</body>
+</html>

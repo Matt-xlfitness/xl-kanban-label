@@ -202,4 +202,68 @@ If anything's wrong: **the bug is in your `product` object, not in the print pag
 
 Send back: a screenshot of the rendered SUPPS-0254 label opened from the button + the URL of the SUPPS-0254 product page.
 
+---
+
+# Phase 2 — Print Queue (multiple cards per page)
+
+Once the single-card button is working on every product page, add a **Print Queue** that batch-prints multiple selected items in one print job.
+
+## Live URL for batch printing
+
+```
+https://matt-xlfitness.github.io/xl-kanban-label/sheet.html
+```
+
+Same opaque-URL rules apply — do not visit, embed, or restyle.
+
+## How it works
+
+Same `?data=` mechanism, but the JSON is now an **ARRAY** of products instead of a single object. The sheet page lays them out **2 cards per A4 page** (the maximum that fits at 127mm) and paginates automatically.
+
+```js
+// Build the sheet URL from an array of selected products
+function makePrintSheetHref(productsArray) {
+  const json = JSON.stringify(productsArray);            // ← array, not object
+  const b64  = btoa(unescape(encodeURIComponent(json)));
+  return "https://matt-xlfitness.github.io/xl-kanban-label/sheet.html?data=" + b64;
+}
+```
+
+Each product in the array uses the **exact same shape** documented above for single-card mode — no changes per-item. The only difference is you wrap them in `[ … ]`.
+
+## Print Queue UI on the Manus site
+
+1. **Add a checkbox or "Add to Print Queue" button** on each item — selected items go into a session-scoped list (`localStorage`, Vuex, Redux, whatever).
+2. **A floating "Print Queue (N)" indicator** showing how many items are queued.
+3. **A "Print Selected" button** that:
+   - Builds the array of `product` objects (each formatted per the Phase 1 template)
+   - Calls `makePrintSheetHref(arr)`
+   - Opens the resulting URL in a new tab
+4. **The user prints from that tab** — one print job, multiple A4 pages, 2 cards per page.
+
+## Example
+
+If 5 items are selected, the sheet page renders:
+- Page 1: card 1, card 2
+- Page 2: card 3, card 4
+- Page 3: card 5 (alone, no trailing blank page)
+
+User prints once → 3 sheets of A4 → cuts → 5 finished Kanban cards.
+
+## Hard rules for the array
+
+- ✅ Order in the array = order on the printed sheet. Sort however you want before encoding.
+- ✅ Empty rows still hide per-card (same as single-card mode).
+- ✅ Per-card colour still applied per-card via `color` field.
+- ❌ Do NOT include duplicate items in the array unless the user explicitly wants two copies of the same card.
+- ❌ Do NOT change the per-card JSON shape — it's identical to single-card mode.
+
+## Test it
+
+Open this URL to see the sheet render with 2 sample products (built-in test data — no real codes needed):
+
+```
+https://matt-xlfitness.github.io/xl-kanban-label/sheet.html?codes=SUPPS-0254,SUPPS-0356
+```
+
 — Matt
