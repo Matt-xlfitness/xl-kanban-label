@@ -110,9 +110,30 @@
     justify-content: center;
     box-shadow: 0 2px 12px rgba(0,0,0,0.15);
   }
-  .page--large  { flex-direction: column; align-items: center; gap: 19mm; padding: 12mm 0; }
-  .page--medium { flex-direction: column; align-items: center; gap: 3mm;  padding: 8mm 0; }
-  .page--small  { flex-direction: row; gap: 2mm; padding: 6mm 18mm; }
+  .page--large {
+    display: flex;
+    flex-direction: column;
+    align-items: center;        /* horizontal centering (cross axis) */
+    justify-content: center;     /* vertical centering   (main axis) */
+    gap: 12mm;
+    padding: 0;
+  }
+  .page--medium {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2mm;
+    padding: 0;
+  }
+  .page--small {
+    display: grid;
+    grid-template-columns: repeat(2, 86.5mm);   /* exact 2-col grid */
+    justify-content: center;     /* center the grid horizontally inside the page */
+    align-content: center;       /* center the grid vertically too */
+    gap: 2mm 4mm;
+    padding: 0;
+  }
 
   /* Stage = exact print size of one card */
   .stage {
@@ -309,10 +330,7 @@
       page-break-after: auto !important;
       break-after: auto !important;
     }
-    /* Per-size print layout — cards centered within the printable area */
-    .page--large  { gap: 12mm; justify-content: center; }
-    .page--medium { gap: 2mm;  justify-content: center; }
-    .page--small  { gap: 2mm 4mm; }
+    /* Print-mode layout matches screen exactly so what you see is what prints. */
 
     /* Re-assert per-size colours so they aren't stripped */
     .page--large .code-bar,
