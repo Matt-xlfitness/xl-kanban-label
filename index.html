@@ -313,7 +313,7 @@
 
   @media print {
     @page {
-      size: 127mm 127mm;
+      size: A4;          /* print on standard A4 paper */
       margin: 0;
     }
     body {
@@ -323,9 +323,12 @@
       display: block;
     }
     .controls { display: none !important; }
+    /* Label sits in the top-left of the A4 sheet at exact 127 × 127 mm.
+       The rest of the A4 is left blank — cut along the edges of the label. */
     .stage {
       width: 127mm;
       height: 127mm;
+      margin: 0;
       page-break-after: avoid;
     }
     /* Re-assert at print time to override any browser default */
