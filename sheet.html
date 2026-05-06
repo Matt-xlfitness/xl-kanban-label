@@ -107,23 +107,25 @@
     box-shadow: 0 2px 12px rgba(0,0,0,0.15);
     /* No display/flex rules here — each .page--size declares its own grid */
   }
-  /* CSS Grid for every size — predictable, no flex-wrap quirks. */
-  .page--large {
-    display: grid;
-    grid-template-columns: 127mm;
-    justify-content: center;     /* centre the grid horizontally in the page */
-    align-content: center;        /* centre the grid vertically in the page */
-    gap: 12mm;
-    padding: 0;
-  }
+  /* Large + Medium: block layout with margin:auto on the stage — the most
+     universally supported horizontal-centering pattern. Print engines
+     respect this even when CSS Grid centering misbehaves. */
+  .page--large,
   .page--medium {
-    display: grid;
-    grid-template-columns: 125mm;
-    justify-content: center;
-    align-content: center;
-    gap: 2mm;
-    padding: 0;
+    display: block;
+    text-align: center;          /* belt-and-suspenders */
+    padding: 15mm 0;             /* explicit boundary offset top/bot */
   }
+  .page--large .stage,
+  .page--medium .stage {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;          /* horizontal centering on a block element */
+  }
+  .page--large .stage + .stage  { margin-top: 12mm; }
+  .page--medium .stage + .stage { margin-top: 2mm; }
+
+  /* Small still uses a 2-col grid — it was working, no need to change. */
   .page--small {
     display: grid;
     grid-template-columns: repeat(2, 86.5mm);
