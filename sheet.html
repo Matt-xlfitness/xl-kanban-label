@@ -1,39 +1,44 @@
 <!DOCTYPE html>
 <!--
 ================================================================
-  XL FITNESS — KANBAN PRINT SHEET (multiple cards per A4 page)
-  Render N labels in one document for batch printing.
-  Each card is the same 127 × 127 mm design as the single label.
-  A4 paper = 2 cards per page (max for 127mm at portrait A4).
-================================================================
+  XL FITNESS — KANBAN PRINT SHEET (multi-size, multi-card per A4)
+  Renders N labels at one or more sizes (large / medium / small),
+  packed onto A4 portrait pages, in one print job.
 
   HOW TO PASS DATA
-    ?data=<base64 JSON ARRAY of products>   (preferred)
-       const arr = [productA, productB, productC, ...];
-       const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(arr))));
-       const url = `https://matt-xlfitness.github.io/xl-kanban-label/sheet.html?data=${b64}`;
+    ?data=<base64 JSON ARRAY of products>     (preferred)
+    ?codes=SUPPS-0254,SUPPS-0356               (testing — local samples)
 
-    ?codes=SUPPS-0254,SUPPS-0356             (testing — uses local samples)
+  HOW TO PASS SIZES
+    ?sizes=large                  (default if omitted — backwards compat)
+    ?sizes=medium
+    ?sizes=small
+    ?sizes=large,medium,small     (multi-size — grouped by size)
+    ?sizes=all                    (alias for large,medium,small)
 
-  Each product in the array MUST follow the same shape as the
-  single-label page (see MANUS_PRINT_BUTTON.md).
+    Singular ?size= and 3-char codes (lrg/med/sml) also accepted.
+
+  PER-PAGE PACKING ON A4 PORTRAIT
+    Large  127 × 127 mm →  2 cards / A4
+    Medium 125 ×  52 mm →  5 cards / A4
+    Small  86.5 × 28.5 mm → 20 cards / A4 (2 cols × 10 rows)
 ================================================================
 -->
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>XL Kanban Sheet — Print Multiple</title>
+<title>XL Kanban Sheet — Print Multi-Size</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;800&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
-  /* ===== Same label visual spec as index.html ===== */
   :root {
     --navy:  #121826;
     --black: #000;
     --white: #fff;
+    --gray:  #959595;
     --page-bg: #d6d6d6;
   }
 
@@ -46,7 +51,7 @@
     padding: 24px 16px 60px;
   }
 
-  /* Controls — only visible on screen */
+  /* ---------- Controls (screen only) ---------- */
   .controls {
     max-width: 210mm;
     margin: 0 auto 20px;
@@ -74,7 +79,7 @@
   }
   .controls .print-btn { background: #2a7a3a; }
 
-  /* Empty-state */
+  /* ---------- Empty state ---------- */
   .empty-state {
     max-width: 600px;
     margin: 60px auto;
@@ -92,18 +97,25 @@
     font-size: 12px;
   }
 
-  /* ===== A4 sheet container ===== */
-  .sheet {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12mm;
-  }
+  /* ---------- A4 page wrapper ---------- */
+  .sheet { display: flex; flex-direction: column; align-items: center; gap: 12mm; }
 
-  /* ===== Each card = 127 × 127 mm exactly, same as single-label ===== */
+  .page {
+    width: 210mm;
+    height: 297mm;
+    background: var(--white);
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    justify-content: center;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+  }
+  .page--large  { flex-direction: column; align-items: center; gap: 19mm; padding: 12mm 0; }
+  .page--medium { flex-direction: column; align-items: center; gap: 3mm;  padding: 8mm 0; }
+  .page--small  { flex-direction: row; gap: 2mm; padding: 6mm 18mm; }
+
+  /* Stage = exact print size of one card */
   .stage {
-    width: 127mm;
-    height: 127mm;
     position: relative;
     container-type: size;
     background: var(--white);
@@ -111,92 +123,164 @@
     break-inside: avoid;
   }
 
-  .label {
-    position: absolute;
-    inset: 0;
+  /* ===========================================================
+     ===================== LARGE  127 × 127 ====================
+     =========================================================== */
+  .page--large .stage { width: 127mm; height: 127mm; }
+
+  .page--large .label {
+    position: absolute; inset: 0;
     background: var(--white);
     border-radius: 3.61cqw;
     outline: 1.92cqw solid var(--black);
     outline-offset: -1.92cqw;
   }
-  .label > * { position: absolute; }
+  .page--large .label > * { position: absolute; }
 
-  .code-bar, .name-bar {
+  .page--large .code-bar,
+  .page--large .name-bar {
     background: var(--navy);
     border-radius: 1.20cqw;
     color: var(--white);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-weight: 800;
-    line-height: 1;
-    overflow: hidden;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-weight: 800; line-height: 1; overflow: hidden;
     padding: 0 1.5cqw;
-    left: 2.41%;
-    width: 95.07%;
-    height: 9.44%;
+    left: 2.41%; width: 95.07%; height: 9.44%;
     white-space: nowrap;
   }
-  .code-bar { top: 2.31%; font-size: 6.7cqw; letter-spacing: 0.12cqw; }
-  .name-bar { top: 13.39%; font-size: 4.8cqw; letter-spacing: 0.06cqw; }
+  .page--large .code-bar { top: 2.31%; font-size: 6.7cqw; letter-spacing: 0.12cqw; }
+  .page--large .name-bar { top: 13.39%; font-size: 4.8cqw; letter-spacing: 0.06cqw; }
 
-  .cell {
+  .page--large .cell {
     height: 4.94%;
     border: 0.36cqw solid var(--black);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-weight: 800;
-    line-height: 1;
-    overflow: hidden;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-weight: 800; line-height: 1; overflow: hidden;
     padding: 0 0.7cqw;
     font-size: 2.65cqw;
     white-space: nowrap;
   }
-  .cell.is-empty { display: none; }
-  .cell-label  { width: 21.30%; background: var(--navy); color: var(--white); left: 2.29%;  letter-spacing: 0.06cqw; }
-  .cell-value  { width: 26.47%; background: var(--white); color: var(--black); left: 23.59%; font-weight: 700; }
+  .page--large .cell.is-empty { display: none; }
+  .page--large .cell-label { width: 21.30%; background: var(--navy); color: var(--white); left: 2.29%;  letter-spacing: 0.06cqw; }
+  .page--large .cell-value { width: 26.47%; background: var(--white); color: var(--black); left: 23.59%; font-weight: 700; }
 
-  .cell-big {
+  .page--large .cell-big {
     height: 9.66%;
     border: 0.36cqw solid var(--black);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    font-weight: 800;
-    line-height: 1;
-    overflow: hidden;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    font-weight: 800; line-height: 1; overflow: hidden;
     padding: 0 0.7cqw;
     white-space: nowrap;
   }
-  .cell-big-label { width: 21.30%; left: 2.29%;  background: var(--navy); color: var(--white); font-size: 2.65cqw; }
-  .cell-big-value { width: 26.47%; left: 23.59%; background: var(--white); color: var(--black); font-size: 4.6cqw; font-weight: 800; }
+  .page--large .cell-big-label { width: 21.30%; left: 2.29%;  background: var(--navy); color: var(--white); font-size: 2.65cqw; }
+  .page--large .cell-big-value { width: 26.47%; left: 23.59%; background: var(--white); color: var(--black); font-size: 4.6cqw; font-weight: 800; }
 
-  .image-rect {
+  .page--large .image-rect {
     left: 51.50%; top: 24.48%; width: 44.65%; height: 40.72%;
-    background: var(--white);
-    border: 0;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden;
+    background: var(--white); border: 0;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
   }
-  .image-rect img { max-width: 96%; max-height: 96%; object-fit: contain; }
-  .image-rect .placeholder { font-weight: 800; font-size: 3.4cqw; color: var(--black); }
+  .page--large .image-rect img { max-width: 96%; max-height: 96%; object-fit: contain; }
+  .page--large .image-rect .placeholder { font-weight: 800; font-size: 3.4cqw; color: var(--black); }
 
-  .qr-rect {
+  .page--large .qr-rect {
     left: 57.28%; top: 66.08%; width: 33.09%; height: 30.19%;
-    background: var(--white);
-    border: 0;
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden; padding: 1cqw;
+    background: var(--white); border: 0;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+    padding: 1cqw;
   }
-  .qr-rect canvas, .qr-rect img {
+  .page--large .qr-rect canvas, .page--large .qr-rect img {
     width: 100% !important; height: 100% !important; object-fit: contain;
   }
 
-  /* ===== Print ===== */
+  /* ===========================================================
+     ===================== MEDIUM  125 × 52 ====================
+     ===========================================================
+     Source: Figma TBHCw5NW0FCfA1eNJQGz5y · 1049 × 436 px → 125 × 52 mm
+  */
+  .page--medium .stage { width: 125mm; height: 52mm; }
+
+  .page--medium .label {
+    position: absolute; inset: 0;
+    background: var(--navy);
+    outline: 1.525cqw solid var(--black);
+    outline-offset: -1.525cqw;
+  }
+  .page--medium .label > * { position: absolute; }
+
+  .page--medium .image-rect {
+    left:    14.39%; top:  3.67%; width: 35.27%; height: 92.66%;
+    background: var(--white);
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .page--medium .image-rect img { max-width: 96%; max-height: 96%; object-fit: contain; }
+  .page--medium .image-rect .placeholder { font-weight: 800; font-size: 7.15cqw; color: var(--black); }
+
+  .page--medium .name-area {
+    left:    50.91%; top: 3.67%; width: 35.27%; height: 49.77%;
+    color: var(--white);
+    font-weight: 800; font-size: 3.81cqw; line-height: 1.1;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 0 0.5cqw; overflow: hidden; word-wrap: break-word;
+  }
+
+  .page--medium .code-rect {
+    left:    50.91%; top: 53.44%; width: 35.27%; height: 42.89%;
+    background: var(--white); color: var(--black);
+    font-weight: 800; font-size: 7.15cqw; line-height: 1;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    overflow: hidden; padding: 0 0.5cqw;
+    white-space: nowrap; letter-spacing: 0.1cqw;
+  }
+
+  /* ===========================================================
+     ===================== SMALL  86.5 × 28.5 ==================
+     ===========================================================
+     Source: Figma VvOHTCmLwZqQwhln4q94zk · 1049 × 346 px → 86.5 × 28.5 mm
+  */
+  .page--small .stage { width: 86.5mm; height: 28.5mm; }
+
+  .page--small .label {
+    position: absolute; inset: 0;
+    background: var(--white);
+    border-radius: 3.81cqw;
+    outline: 2.383cqw solid var(--black);
+    outline-offset: -2.383cqw;
+  }
+  .page--small .label > * { position: absolute; }
+
+  .page--small .image-rect {
+    left:    3.05%; top: 8.67%; width: 30.31%; height: 83.82%;
+    background: var(--white);
+    border: 0.0953cqw solid var(--black);
+    border-radius: 1.24cqw;
+    display: flex; align-items: center; justify-content: center; overflow: hidden;
+  }
+  .page--small .image-rect img { max-width: 96%; max-height: 96%; object-fit: contain; }
+  .page--small .image-rect .placeholder { font-weight: 800; font-size: 6.10cqw; color: var(--black); }
+
+  .page--small .name-area {
+    left:    34.32%; top: 6.94%; width: 63.30%; height: 50.58%;
+    background: var(--gray); color: var(--white);
+    border: 0.0953cqw solid var(--black);
+    border-radius: 1.24cqw;
+    font-weight: 800; font-size: 3.81cqw; line-height: 1.1;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    padding: 0 0.8cqw; overflow: hidden; word-wrap: break-word;
+  }
+
+  .page--small .code-rect {
+    left:    34.32%; top: 60.40%; width: 62.92%; height: 31.21%;
+    background: var(--white); color: var(--black);
+    border: 0.0953cqw solid var(--black);
+    border-radius: 1.43cqw;
+    font-weight: 800; font-size: 7.15cqw; line-height: 1;
+    display: flex; align-items: center; justify-content: center; text-align: center;
+    overflow: hidden; padding: 0 0.5cqw;
+    white-space: nowrap; letter-spacing: 0.1cqw;
+  }
+
+  /* ---------- Print ---------- */
   html, body, .stage, .label, .label * {
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
@@ -204,46 +288,42 @@
   }
 
   @media print {
-    @page {
-      size: A4;
-      margin: 0;
-    }
-    body {
-      background: white;
-      padding: 0;
-      margin: 0;
-    }
+    @page { size: A4; margin: 0; }
+    body { background: white; padding: 0; margin: 0; }
     .controls, .empty-state { display: none !important; }
 
-    .sheet {
-      gap: 0;
-    }
+    .sheet { gap: 0; }
 
-    /* Two 127mm cards per A4 page (210x297). 2 cards = 254mm height.
-       Spare vertical = 43mm → split as 12mm top + 19mm gap + 12mm bottom. */
-    .stage {
-      margin: 12mm auto 0;
-    }
-    /* Force a page break after every 2nd card */
-    .stage:nth-of-type(2n) {
+    .page {
+      box-shadow: none;
       page-break-after: always;
       break-after: page;
-      margin-bottom: 12mm;
     }
-    /* But never break after the last card (avoids trailing blank page) */
-    .stage:last-child {
+    .page:last-child {
       page-break-after: auto !important;
       break-after: auto !important;
     }
 
-    /* Re-assert at print time */
-    .code-bar, .name-bar, .cell-label, .cell-big-label {
-      background-color: var(--navy) !important;
-      color: var(--white) !important;
+    /* Re-assert per-size colours so they aren't stripped */
+    .page--large .code-bar,
+    .page--large .name-bar,
+    .page--large .cell-label,
+    .page--large .cell-big-label {
+      background-color: var(--navy) !important; color: var(--white) !important;
     }
-    .label { outline-color: var(--black) !important; }
-    .cell, .cell-big { border-color: var(--black) !important; }
-    .image-rect, .qr-rect { border: 0 !important; }
+    .page--large .label { outline-color: var(--black) !important; }
+    .page--large .cell, .page--large .cell-big { border-color: var(--black) !important; }
+
+    .page--medium .label { background-color: var(--navy) !important; outline-color: var(--black) !important; }
+    .page--medium .image-rect, .page--medium .code-rect { background-color: var(--white) !important; }
+    .page--medium .name-area { color: var(--white) !important; }
+    .page--medium .code-rect { color: var(--black) !important; }
+
+    .page--small .label { background-color: var(--white) !important; outline-color: var(--black) !important; }
+    .page--small .image-rect, .page--small .code-rect { background-color: var(--white) !important; }
+    .page--small .name-area { background-color: var(--gray) !important; color: var(--white) !important; }
+    .page--small .code-rect { color: var(--black) !important; }
+    .page--small .image-rect, .page--small .name-area, .page--small .code-rect { border-color: var(--black) !important; }
   }
 </style>
 </head>
@@ -264,55 +344,51 @@
       code: "SUPPS-0356",
       description: "Gatorade NO SUGAR - Berry",
       rows: {
-        a3:  { label: "TYPE",         value: "Drinks, Hydration" },
-        a4:  { label: "VARIANT",      value: "No Sugar - Berry" },
-        a5:  { label: "BRAND",        value: "Gatorade" },
-        a6:  { label: "",             value: "" },
-        a7:  { label: "",             value: "" },
-        a8:  { label: "",             value: "" },
-        a9:  { label: "",             value: "" },
-        a10: { label: "SUPPLIER",     value: "FitnessVending" },
-        a11: { label: "XL PART ID",   value: "SUPPS-0356" },
+        a3:  { label: "TYPE", value: "Drinks, Hydration" },
+        a4:  { label: "VARIANT", value: "No Sugar - Berry" },
+        a5:  { label: "BRAND", value: "Gatorade" },
+        a6:  { label: "", value: "" }, a7:  { label: "", value: "" },
+        a8:  { label: "", value: "" }, a9:  { label: "", value: "" },
+        a10: { label: "SUPPLIER", value: "FitnessVending" },
+        a11: { label: "XL PART ID", value: "SUPPS-0356" },
         a12: { label: "SUPPLIER SKU", value: "2875839578208" },
-        a1:  { label: "Q to Order",   value: "1" },
-        a2:  { label: "Box Size",     value: "12" }
+        a1:  { label: "Q to Order", value: "1" },
+        a2:  { label: "Box Size", value: "12" }
       },
-      image: "",
-      qrPayload: "https://xlfitness.com.au/parts/SUPPS-0356",
-      color: "#121826"
+      image: "", qrPayload: "https://xlfitness.com.au/parts/SUPPS-0356", color: "#121826"
     },
     "SUPPS-0254": {
       code: "SUPPS-0254",
       description: "CBUM Thavage PUMP RTD 355ml Juicy Pumps",
       rows: {
-        a3:  { label: "TYPE",         value: "Drinks, Energy" },
-        a4:  { label: "VARIANT",      value: "Juicy Pumps" },
-        a5:  { label: "BRAND",        value: "CBUM Thavage" },
-        a6:  { label: "",             value: "" },
-        a7:  { label: "",             value: "" },
-        a8:  { label: "",             value: "" },
-        a9:  { label: "",             value: "" },
-        a10: { label: "SUPPLIER",     value: "FitnessVending" },
-        a11: { label: "XL PART ID",   value: "SUPPS-0254" },
+        a3:  { label: "TYPE", value: "Drinks, Energy" },
+        a4:  { label: "VARIANT", value: "Juicy Pumps" },
+        a5:  { label: "BRAND", value: "CBUM Thavage" },
+        a6:  { label: "", value: "" }, a7:  { label: "", value: "" },
+        a8:  { label: "", value: "" }, a9:  { label: "", value: "" },
+        a10: { label: "SUPPLIER", value: "FitnessVending" },
+        a11: { label: "XL PART ID", value: "SUPPS-0254" },
         a12: { label: "SUPPLIER SKU", value: "3481611960416" },
-        a1:  { label: "Q to Order",   value: "1" },
-        a2:  { label: "Box Size",     value: "12" }
+        a1:  { label: "Q to Order", value: "1" },
+        a2:  { label: "Box Size", value: "12" }
       },
-      image: "",
-      qrPayload: "https://xlfitness.com.au/parts/SUPPS-0254",
-      color: "#121826"
+      image: "", qrPayload: "https://xlfitness.com.au/parts/SUPPS-0254", color: "#121826"
     }
   };
 
-  /* ---------- Slot positions (% of stage height) ---------- */
+  /* ---------- Slot positions (LARGE only — % of stage height) ---------- */
   const SPEC_TOPS = {
     a3: 24.04, a4: 28.98, a5: 33.92, a6: 38.86, a7: 43.80,
     a8: 48.74, a9: 53.68, a10: 58.62, a11: 63.56, a12: 68.50
   };
   const BIG_TOPS = { a1: 75.41, a2: 84.74 };
 
-  /* ---------- Build one label DOM tree from a product object ---------- */
-  function buildLabel(product) {
+  /* ===========================================================
+     ===================== Card builders =======================
+     =========================================================== */
+
+  /* ---------- LARGE card ---------- */
+  function buildLargeCard(product) {
     const stage = document.createElement('div');
     stage.className = 'stage';
 
@@ -332,7 +408,6 @@
     nameBar.textContent = product.description || "";
     label.appendChild(nameBar);
 
-    // 10 spec rows (a3..a12)
     Object.entries(SPEC_TOPS).forEach(([key, top]) => {
       const row = (product.rows && product.rows[key]) || { label: '', value: '' };
       const isEmpty = !row.label && !row.value;
@@ -350,7 +425,6 @@
       label.appendChild(valCell);
     });
 
-    // 2 big bottom rows (a1, a2)
     Object.entries(BIG_TOPS).forEach(([key, top]) => {
       const row = (product.rows && product.rows[key]) || { label: '', value: '' };
 
@@ -367,7 +441,6 @@
       label.appendChild(valCell);
     });
 
-    // Image
     const imgRect = document.createElement('div');
     imgRect.className = 'image-rect';
     if (product.image) {
@@ -383,7 +456,6 @@
     }
     label.appendChild(imgRect);
 
-    // QR (filled after the stage is in the DOM so dimensions exist)
     const qrRect = document.createElement('div');
     qrRect.className = 'qr-rect';
     label.appendChild(qrRect);
@@ -392,6 +464,91 @@
 
     return { stage, qrRect, qrText: product.qrPayload || product.code || '' };
   }
+
+  /* ---------- MEDIUM card (image + name + code, no QR) ---------- */
+  function buildMediumCard(product) {
+    const stage = document.createElement('div');
+    stage.className = 'stage';
+
+    const label = document.createElement('div');
+    label.className = 'label';
+    const accent = (product.color && /^#[0-9a-fA-F]{3,8}$/.test(product.color))
+      ? product.color : "#121826";
+    label.style.setProperty('--navy', accent);
+
+    const imgRect = document.createElement('div');
+    imgRect.className = 'image-rect';
+    if (product.image) {
+      const img = document.createElement('img');
+      img.src = product.image;
+      img.alt = product.description || '';
+      imgRect.appendChild(img);
+    } else {
+      const ph = document.createElement('span');
+      ph.className = 'placeholder';
+      ph.textContent = '<IMAGE>';
+      imgRect.appendChild(ph);
+    }
+    label.appendChild(imgRect);
+
+    const nameArea = document.createElement('div');
+    nameArea.className = 'name-area';
+    nameArea.textContent = product.description || '';
+    label.appendChild(nameArea);
+
+    const codeRect = document.createElement('div');
+    codeRect.className = 'code-rect';
+    codeRect.textContent = product.code || '';
+    label.appendChild(codeRect);
+
+    stage.appendChild(label);
+    return { stage };
+  }
+
+  /* ---------- SMALL card (white outer, gray name rect, no QR) ---------- */
+  function buildSmallCard(product) {
+    const stage = document.createElement('div');
+    stage.className = 'stage';
+
+    // Note: small label outer is white-fill regardless of product.color
+    const label = document.createElement('div');
+    label.className = 'label';
+
+    const imgRect = document.createElement('div');
+    imgRect.className = 'image-rect';
+    if (product.image) {
+      const img = document.createElement('img');
+      img.src = product.image;
+      img.alt = product.description || '';
+      imgRect.appendChild(img);
+    } else {
+      const ph = document.createElement('span');
+      ph.className = 'placeholder';
+      ph.textContent = '<IMAGE>';
+      imgRect.appendChild(ph);
+    }
+    label.appendChild(imgRect);
+
+    const nameArea = document.createElement('div');
+    nameArea.className = 'name-area';
+    nameArea.textContent = product.description || '';
+    label.appendChild(nameArea);
+
+    const codeRect = document.createElement('div');
+    codeRect.className = 'code-rect';
+    codeRect.textContent = product.code || '';
+    label.appendChild(codeRect);
+
+    stage.appendChild(label);
+    return { stage };
+  }
+
+  /* ---------- Per-size config ---------- */
+  const SIZE_CONFIG = {
+    large:  { perPage: 2,  build: buildLargeCard  },
+    medium: { perPage: 5,  build: buildMediumCard },
+    small:  { perPage: 20, build: buildSmallCard  }
+  };
 
   /* ---------- Auto-fit text in each cell ---------- */
   function fitText(el, minPx = 6) {
@@ -410,7 +567,7 @@
     }
   }
   function fitAll() {
-    document.querySelectorAll('.code-bar, .name-bar, .cell, .cell-big')
+    document.querySelectorAll('.code-bar, .name-bar, .cell, .cell-big, .name-area, .code-rect')
       .forEach(el => fitText(el));
   }
 
@@ -439,7 +596,30 @@
     return null; // signal "no input"
   }
 
-  /* ---------- Render ---------- */
+  /* ---------- Decode sizes from URL ----------
+     Accepts:
+       ?sizes=large,medium,small   (preferred — per the Manus brief)
+       ?sizes=all                  (alias for all 3)
+       ?size=medium                (singular, also accepted)
+       Abbreviations lrg/med/sml   (also accepted)
+     Default (omitted) = ['large']
+  */
+  function loadSizes() {
+    const params = new URLSearchParams(window.location.search);
+    const raw = (params.get('sizes') || params.get('size') || 'large').toLowerCase().trim();
+
+    if (raw === 'all') return ['large', 'medium', 'small'];
+
+    const ALIAS = { lrg: 'large', med: 'medium', sml: 'small' };
+    const sizes = raw.split(',')
+      .map(s => s.trim())
+      .map(s => ALIAS[s] || s)
+      .filter(s => s in SIZE_CONFIG);
+
+    return sizes.length > 0 ? sizes : ['large'];
+  }
+
+  /* ---------- Render the sheet ---------- */
   function renderSheet() {
     const sheet = document.getElementById('sheet');
     sheet.innerHTML = '';
@@ -447,15 +627,14 @@
     const products = loadProducts();
 
     if (products === null) {
-      // Empty state — no input given
       const empty = document.createElement('div');
       empty.className = 'empty-state';
       empty.innerHTML = `
         <h3 style="margin-bottom:8px">No products to print</h3>
         <p>Pass products to this page in the URL:</p>
-        <p style="margin-top:8px"><code>?data=&lt;base64 JSON array&gt;</code> — preferred for live data from Manus</p>
-        <p style="margin-top:4px"><code>?codes=SUPPS-0254,SUPPS-0356</code> — for testing with built-in samples</p>
-        <p style="margin-top:14px"><a href="?codes=SUPPS-0254,SUPPS-0356">→ Try the built-in sample (2 cards)</a></p>
+        <p style="margin-top:8px"><code>?data=&lt;base64 JSON array&gt;&amp;sizes=large,medium,small</code> — preferred, multi-size</p>
+        <p style="margin-top:4px"><code>?codes=SUPPS-0254,SUPPS-0356&amp;sizes=all</code> — testing, all sizes</p>
+        <p style="margin-top:14px"><a href="?codes=SUPPS-0254,SUPPS-0356&sizes=all">→ Try the sample (2 cards × 3 sizes)</a></p>
       `;
       sheet.appendChild(empty);
       document.getElementById('status').textContent = '0 cards loaded';
@@ -471,29 +650,47 @@
       return;
     }
 
+    const sizes = loadSizes();
     const qrJobs = [];
-    products.forEach(p => {
-      const { stage, qrRect, qrText } = buildLabel(p);
-      sheet.appendChild(stage);
-      qrJobs.push({ qrRect, qrText });
+    let totalPages = 0;
+    const pageBreakdown = [];
+
+    sizes.forEach(size => {
+      const cfg = SIZE_CONFIG[size];
+
+      for (let i = 0; i < products.length; i += cfg.perPage) {
+        const pageItems = products.slice(i, i + cfg.perPage);
+        const page = document.createElement('div');
+        page.className = `page page--${size}`;
+
+        pageItems.forEach(p => {
+          const result = cfg.build(p);
+          page.appendChild(result.stage);
+          if (result.qrRect) {
+            qrJobs.push({ qrRect: result.qrRect, qrText: result.qrText });
+          }
+        });
+
+        sheet.appendChild(page);
+        totalPages++;
+      }
+
+      const sizePages = Math.ceil(products.length / cfg.perPage);
+      pageBreakdown.push(`${products.length} ${size} on ${sizePages} pg`);
     });
 
-    // Generate QRs after stages are mounted (so sizing is known)
     qrJobs.forEach(({ qrRect, qrText }) => {
       qrRect.innerHTML = '';
       new QRCode(qrRect, {
-        text: qrText,
-        width: 512,
-        height: 512,
+        text: qrText, width: 512, height: 512,
         correctLevel: QRCode.CorrectLevel.H
       });
     });
 
-    const pages = Math.ceil(products.length / 2);
+    const totalCards = products.length * sizes.length;
     document.getElementById('status').textContent =
-      `${products.length} card${products.length === 1 ? '' : 's'} across ${pages} A4 page${pages === 1 ? '' : 's'} (2 per page)`;
+      `${products.length} item${products.length === 1 ? '' : 's'} × ${sizes.length} size${sizes.length === 1 ? '' : 's'} = ${totalCards} cards on ${totalPages} A4 page${totalPages === 1 ? '' : 's'} (${pageBreakdown.join(' · ')})`;
 
-    // Fit text after fonts load
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(fitAll);
     } else {

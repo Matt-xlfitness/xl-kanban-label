@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <!--
 ================================================================
-  XL FITNESS — KANBAN MEDIUM LABEL  (125 × 52 mm)
-  Source: Figma file TBHCw5NW0FCfA1eNJQGz5y (node 1:5)
-  1049 × 436 px Figma canvas → 125 × 52 mm print, 1:1 scale
-  Renders only: image (left), name (top-right), code (bottom-right)
+  XL FITNESS — KANBAN SMALL LABEL  (86.5 × 28.5 mm)
+  Source: Figma file VvOHTCmLwZqQwhln4q94zk (node 4:2)
+  1049 × 346 px Figma canvas → 86.5 × 28.5 mm print, 1:1 scale
+  Renders: image (left, white), name (top-right, gray), code (bottom-right, white)
   Same data contract as index.html — extra fields are ignored.
 ================================================================
 -->
@@ -12,7 +12,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>XL Kanban Label — Medium</title>
+<title>XL Kanban Label — Small</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;800&display=swap" rel="stylesheet">
@@ -21,9 +21,10 @@
     --navy:  #121826;
     --black: #000;
     --white: #fff;
+    --gray:  #959595;
     --page-bg: #d6d6d6;
-    --print-w: 125mm;
-    --print-h: 52mm;
+    --print-w: 86.5mm;
+    --print-h: 28.5mm;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -85,25 +86,28 @@
     background: var(--white);
   }
 
-  /* ---------- Label (Figma 1049 × 474 px → percentages) ---------- */
+  /* ---------- Label outer (Figma 1049 × 346 px → percentages) ---------- */
+  /* White bg, 25px black border, 40px rounded corners */
   .label {
     position: absolute;
     inset: 0;
-    background: var(--navy);
-    /* 16px black border on 1049px wide → 1.525cqw */
-    outline: 1.525cqw solid var(--black);
-    outline-offset: -1.525cqw;
+    background: var(--white);
+    border-radius: 3.81cqw;            /* 40/1049 */
+    outline: 2.383cqw solid var(--black);  /* 25/1049 */
+    outline-offset: -2.383cqw;
   }
   .label > * { position: absolute; }
 
-  /* ---------- Image rect ---------- */
-  /* Figma: 370 × 404 at (151, 16) on 1049 × 436 outer */
+  /* ---------- Image rect (white bg, 1px black border, 13px rounded) ---------- */
+  /* Figma: 318 × 290 at (32, 30) on 1049 × 346 outer */
   .image-rect {
-    left:   14.39%;   /* 151/1049 */
-    top:     3.67%;   /*  16/436  */
-    width:  35.27%;   /* 370/1049 */
-    height: 92.66%;   /* 404/436  */
+    left:    3.05%;   /*  32/1049 */
+    top:     8.67%;   /*  30/346  */
+    width:  30.31%;   /* 318/1049 */
+    height: 83.82%;   /* 290/346  */
     background: var(--white);
+    border: 0.0953cqw solid var(--black);  /* 1/1049 */
+    border-radius: 1.24cqw;                /* 13/1049 */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -116,41 +120,46 @@
   }
   .image-rect .placeholder {
     font-weight: 800;
-    font-size: 7.15cqw;       /* match the Figma <IMAGE> placeholder */
+    font-size: 6.10cqw;       /* 64/1049 — Figma <IMAGE> placeholder */
     color: var(--black);
   }
 
-  /* ---------- Name area (text on navy bg, no white box) ---------- */
-  /* Figma: 370 × 217 at (534, 16) */
+  /* ---------- Name rect (gray bg, white text, 1px black border, 13px rounded) ---------- */
+  /* Figma: 664 × 175 at (360, 24) — fill #959595 */
   .name-area {
-    left:   50.91%;   /* 534/1049 */
-    top:     3.67%;   /*  16/436  */
-    width:  35.27%;   /* 370/1049 */
-    height: 49.77%;   /* 217/436  */
+    left:   34.32%;   /* 360/1049 */
+    top:     6.94%;   /*  24/346  */
+    width:  63.30%;   /* 664/1049 */
+    height: 50.58%;   /* 175/346  */
+    background: var(--gray);
     color: var(--white);
+    border: 0.0953cqw solid var(--black);  /* 1/1049 */
+    border-radius: 1.24cqw;                /* 13/1049 */
     font-weight: 800;
-    font-size: 3.81cqw;  /* 40/1049 */
+    font-size: 3.81cqw;       /* 40/1049 — Figma NAME size */
     line-height: 1.1;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 0 0.5cqw;
+    padding: 0 0.8cqw;
     overflow: hidden;
     word-wrap: break-word;
   }
 
-  /* ---------- Code rect (white bg, black bold code text) ---------- */
-  /* Figma: 370 × 187 at (534, 233) */
+  /* ---------- Code rect (white bg, black text, 1px black border, 15px rounded) ---------- */
+  /* Figma: 660 × 108 at (360, 209) */
   .code-rect {
-    left:   50.91%;   /* 534/1049 */
-    top:    53.44%;   /* 233/436  */
-    width:  35.27%;   /* 370/1049 */
-    height: 42.89%;   /* 187/436  */
+    left:   34.32%;   /* 360/1049 */
+    top:    60.40%;   /* 209/346  */
+    width:  62.92%;   /* 660/1049 */
+    height: 31.21%;   /* 108/346  */
     background: var(--white);
     color: var(--black);
+    border: 0.0953cqw solid var(--black);  /* 1/1049 */
+    border-radius: 1.43cqw;                /* 15/1049 */
     font-weight: 800;
-    font-size: 7.15cqw;  /* 75/1049 */
+    font-size: 7.15cqw;       /* 75/1049 — Figma CODE size */
     line-height: 1;
     display: flex;
     align-items: center;
@@ -171,7 +180,7 @@
 
   @media print {
     @page {
-      size: 125mm 52mm;
+      size: 86.5mm 28.5mm;
       margin: 0;
     }
     body {
@@ -182,15 +191,16 @@
     }
     .controls { display: none !important; }
     .stage {
-      width: 125mm;
-      height: 52mm;
+      width: 86.5mm;
+      height: 28.5mm;
       page-break-after: avoid;
     }
-    /* Re-assert print colours so dark fills aren't stripped */
-    .label { background-color: var(--navy) !important; outline-color: var(--black) !important; }
+    /* Re-assert print colours so fills aren't stripped */
+    .label { background-color: var(--white) !important; outline-color: var(--black) !important; }
     .image-rect, .code-rect { background-color: var(--white) !important; }
-    .name-area { color: var(--white) !important; }
+    .name-area { background-color: var(--gray) !important; color: var(--white) !important; }
     .code-rect { color: var(--black) !important; }
+    .image-rect, .name-area, .code-rect { border-color: var(--black) !important; }
   }
 </style>
 </head>
@@ -200,8 +210,8 @@
   <label for="code">XL-Code:</label>
   <input id="code" type="text" value="SUPPS-0254" />
   <button id="load">Load</button>
-  <button id="print" class="print-btn" type="button">Print 125×52mm</button>
-  <span class="hint">In the print dialog, choose paper size <strong>125 × 52 mm</strong> (custom), 100% scale, background graphics ON.</span>
+  <button id="print" class="print-btn" type="button">Print 86.5×28.5mm</button>
+  <span class="hint">In the print dialog, choose paper size <strong>86.5 × 28.5 mm</strong> (custom), 100% scale, background graphics ON.</span>
 </div>
 
 <div class="stage">
@@ -266,11 +276,6 @@
       alert("No product found for code: " + code);
       return;
     }
-
-    // Apply per-product accent (from the category, per Manus brief)
-    const accent = (p.color && /^#[0-9a-fA-F]{3,8}$/.test(p.color))
-      ? p.color : "#121826";
-    document.getElementById("label").style.setProperty("--navy", accent);
 
     document.getElementById("xlCode").textContent      = p.code || "";
     document.getElementById("description").textContent = p.description || "";
