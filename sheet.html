@@ -261,7 +261,7 @@
 
   .page--small .name-area {
     left:    34.32%; top: 6.94%; width: 63.30%; height: 50.58%;
-    background: var(--gray); color: var(--white);
+    background: var(--accent, var(--gray)); color: var(--white);
     border: 0.0953cqw solid var(--black);
     border-radius: 1.24cqw;
     font-weight: 800; font-size: 3.81cqw; line-height: 1.1;
@@ -321,7 +321,7 @@
 
     .page--small .label { background-color: var(--white) !important; outline-color: var(--black) !important; }
     .page--small .image-rect, .page--small .code-rect { background-color: var(--white) !important; }
-    .page--small .name-area { background-color: var(--gray) !important; color: var(--white) !important; }
+    .page--small .name-area { background-color: var(--accent, var(--gray)) !important; color: var(--white) !important; }
     .page--small .code-rect { color: var(--black) !important; }
     .page--small .image-rect, .page--small .name-area, .page--small .code-rect { border-color: var(--black) !important; }
   }
@@ -505,14 +505,17 @@
     return { stage };
   }
 
-  /* ---------- SMALL card (white outer, gray name rect, no QR) ---------- */
+  /* ---------- SMALL card (white outer, accent-coloured name rect, no QR) ---------- */
   function buildSmallCard(product) {
     const stage = document.createElement('div');
     stage.className = 'stage';
 
-    // Note: small label outer is white-fill regardless of product.color
+    // Small label outer is white. Per-product accent goes on the name rect only.
     const label = document.createElement('div');
     label.className = 'label';
+    const accent = (product.color && /^#[0-9a-fA-F]{3,8}$/.test(product.color))
+      ? product.color : "#959595";
+    label.style.setProperty('--accent', accent);
 
     const imgRect = document.createElement('div');
     imgRect.className = 'image-rect';

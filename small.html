@@ -124,14 +124,14 @@
     color: var(--black);
   }
 
-  /* ---------- Name rect (gray bg, white text, 1px black border, 13px rounded) ---------- */
-  /* Figma: 664 × 175 at (360, 24) — fill #959595 */
+  /* ---------- Name rect (dynamic accent bg, white text, 1px black border, 13px rounded) ---------- */
+  /* Figma: 664 × 175 at (360, 24) — fill #959595 default; per-product accent overrides */
   .name-area {
     left:   34.32%;   /* 360/1049 */
     top:     6.94%;   /*  24/346  */
     width:  63.30%;   /* 664/1049 */
     height: 50.58%;   /* 175/346  */
-    background: var(--gray);
+    background: var(--accent, var(--gray));
     color: var(--white);
     border: 0.0953cqw solid var(--black);  /* 1/1049 */
     border-radius: 1.24cqw;                /* 13/1049 */
@@ -198,7 +198,7 @@
     /* Re-assert print colours so fills aren't stripped */
     .label { background-color: var(--white) !important; outline-color: var(--black) !important; }
     .image-rect, .code-rect { background-color: var(--white) !important; }
-    .name-area { background-color: var(--gray) !important; color: var(--white) !important; }
+    .name-area { background-color: var(--accent, var(--gray)) !important; color: var(--white) !important; }
     .code-rect { color: var(--black) !important; }
     .image-rect, .name-area, .code-rect { border-color: var(--black) !important; }
   }
@@ -276,6 +276,11 @@
       alert("No product found for code: " + code);
       return;
     }
+
+    // Apply per-product accent (from category, per Manus brief) to the name rect
+    const accent = (p.color && /^#[0-9a-fA-F]{3,8}$/.test(p.color))
+      ? p.color : "#959595";
+    document.getElementById("label").style.setProperty("--accent", accent);
 
     document.getElementById("xlCode").textContent      = p.code || "";
     document.getElementById("description").textContent = p.description || "";
