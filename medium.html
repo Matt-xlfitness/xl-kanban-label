@@ -171,7 +171,7 @@
 
   @media print {
     @page {
-      size: A4;          /* print on standard A4 paper */
+      size: 125mm 56.5mm;
       margin: 0;
     }
     body {
@@ -181,12 +181,9 @@
       display: block;
     }
     .controls { display: none !important; }
-    /* Label sits in the top-left of the A4 sheet at exact 125 × 56.5 mm.
-       The rest of the A4 is left blank — cut along the edges of the label. */
     .stage {
       width: 125mm;
       height: 56.5mm;
-      margin: 0;
       page-break-after: avoid;
     }
     /* Re-assert print colours so dark fills aren't stripped */
