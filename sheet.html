@@ -622,6 +622,33 @@
     return sizes.length > 0 ? sizes : ['large'];
   }
 
+  /* ---------- Normalise a per-item sizes array (lives inside the JSON product) ----------
+     Accepts: ["large","medium"], ["sml"], ["all"], etc.
+     Returns null if the field is missing/empty/all-invalid (caller should fall back to global).
+  */
+  function normalisePerItemSizes(rawSizes) {
+    if (!Array.isArray(rawSizes) || rawSizes.length === 0) return null;
+    const ALIAS = { lrg: 'large', med: 'medium', sml: 'small' };
+    const expanded = [];
+    for (const s of rawSizes) {
+      const lower = String(s).toLowerCase().trim();
+      if (lower === 'all') {
+        expanded.push('large', 'medium', 'small');
+      } else {
+        expanded.push(ALIAS[lower] || lower);
+      }
+    }
+    const valid = expanded.filter(s => s in SIZE_CONFIG);
+    return valid.length > 0 ? [...new Set(valid)] : null;
+  }
+
+  /* ---------- Effective sizes for one product ----------
+     Per-item product.sizes wins. If absent/empty/invalid, fall back to global.
+  */
+  function effectiveSizes(product, globalSizes) {
+    return normalisePerItemSizes(product.sizes) || globalSizes;
+  }
+
   /* ---------- Render the sheet ---------- */
   function renderSheet() {
     const sheet = document.getElementById('sheet');
@@ -653,16 +680,26 @@
       return;
     }
 
-    const sizes = loadSizes();
+    const globalSizes = loadSizes();
     const qrJobs = [];
     let totalPages = 0;
+    let totalCards = 0;
     const pageBreakdown = [];
 
-    sizes.forEach(size => {
+    /* Iterate over all sizes in fixed order so the printed sheet always
+       groups Large → Medium → Small, regardless of per-item overrides. */
+    const ALL_SIZES = ['large', 'medium', 'small'];
+
+    ALL_SIZES.forEach(size => {
+      const productsAtSize = products.filter(p =>
+        effectiveSizes(p, globalSizes).includes(size)
+      );
+      if (productsAtSize.length === 0) return;
+
       const cfg = SIZE_CONFIG[size];
 
-      for (let i = 0; i < products.length; i += cfg.perPage) {
-        const pageItems = products.slice(i, i + cfg.perPage);
+      for (let i = 0; i < productsAtSize.length; i += cfg.perPage) {
+        const pageItems = productsAtSize.slice(i, i + cfg.perPage);
         const page = document.createElement('div');
         page.className = `page page--${size}`;
 
@@ -678,8 +715,9 @@
         totalPages++;
       }
 
-      const sizePages = Math.ceil(products.length / cfg.perPage);
-      pageBreakdown.push(`${products.length} ${size} on ${sizePages} pg`);
+      const sizePages = Math.ceil(productsAtSize.length / cfg.perPage);
+      pageBreakdown.push(`${productsAtSize.length} ${size} on ${sizePages} pg`);
+      totalCards += productsAtSize.length;
     });
 
     qrJobs.forEach(({ qrRect, qrText }) => {
@@ -690,9 +728,10 @@
       });
     });
 
-    const totalCards = products.length * sizes.length;
     document.getElementById('status').textContent =
-      `${products.length} item${products.length === 1 ? '' : 's'} × ${sizes.length} size${sizes.length === 1 ? '' : 's'} = ${totalCards} cards on ${totalPages} A4 page${totalPages === 1 ? '' : 's'} (${pageBreakdown.join(' · ')})`;
+      totalCards === 0
+        ? `${products.length} item${products.length === 1 ? '' : 's'} loaded — no sizes selected for any item`
+        : `${products.length} item${products.length === 1 ? '' : 's'} → ${totalCards} card${totalCards === 1 ? '' : 's'} on ${totalPages} A4 page${totalPages === 1 ? '' : 's'} (${pageBreakdown.join(' · ')})`;
 
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(fitAll);

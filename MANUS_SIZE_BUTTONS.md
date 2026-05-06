@@ -59,6 +59,65 @@ Order in the CSV = order on the printed sheet. Group by size (all Large, then al
 
 ---
 
+## Per-item `sizes` field (per-card override) — NEW
+
+The Print Queue UI has **per-item** size toggles (LRG / MED / SML / ALL on every queued card). Different items often need different sizes:
+
+- Bolt bins (BLT) → Small only
+- Supplement drinks (SUPPS) → Large only
+- Stationery (PAPP) → Medium + Large
+
+The print page now respects a **per-item `sizes` array** inside each product object. This **overrides the global `&sizes=`** for that specific card.
+
+### Add `"sizes"` to each product object
+
+```json
+{
+  "code": "BLT-1999",
+  "description": "Hex Head 1/4\" x 1/2\" (BSF Fine)",
+  "rows": { "...": "..." },
+  "image": "https://...",
+  "qrPayload": "https://kanflow.manus.space/items/1999",
+  "color": "#0ea5e9",
+  "sizes": ["small"]
+}
+```
+
+### Resolution rule (the print page applies this per card)
+
+| Per-item `sizes` field | Behaviour for that card |
+|---|---|
+| `["large"]`, `["small","medium"]`, etc. | Use exactly those sizes for this card only |
+| `["all"]` | Expands to all 3 sizes for this card only |
+| Omitted, `null`, or `[]` | Fall back to the global `&sizes=` |
+
+Same alias rules as global: `"lrg"` / `"med"` / `"sml"` are accepted.
+
+### Worked example
+
+Queue with 3 items, each with different per-item sizes:
+
+```js
+[
+  { "code": "SUPPS-0254", "...": "...", "sizes": ["large"] },
+  { "code": "BLT-1999",   "...": "...", "sizes": ["small"] },
+  { "code": "PAPP-0010",  "...": "...", "sizes": ["medium", "large"] }
+]
+```
+
+Result: 4 cards total
+- 2 Large (SUPPS-0254 + PAPP-0010)
+- 1 Medium (PAPP-0010)
+- 1 Small (BLT-1999)
+
+Printed in size order: 1 A4 page of large + 1 A4 page of medium + 1 A4 page of small = 3 A4 pages, all in **one print job**.
+
+### Backwards compat
+
+If you don't include `"sizes"` per item, the global `&sizes=` keeps working exactly as documented above. No regression for existing flows.
+
+---
+
 ## Buttons mapping
 
 | Button label | UI behaviour | Becomes in URL |
@@ -85,16 +144,28 @@ function makePrintSheetHref(productsArray, sizes = ["large"]) {
 ```
 
 ```js
-// In your print-queue component
-const queuedItems   = [...];                  // already-formatted product objects
-const selectedSizes = ["large", "medium"];    // from your size-button state
+// In your print-queue component, add the per-item sizes when you build each product
+function buildLabelProduct(item) {
+  return {
+    code: item.code,
+    description: item.name,
+    rows: { /* a1–a12 per MANUS_PRINT_BUTTON.md */ },
+    image: item.imageUrl ?? "",
+    qrPayload: item.publicUrl ?? "",
+    color: item.category.color ?? "#121826",
+    sizes: item.activeSizes      // ← NEW: ["large", "small"] from the per-card toggles
+  };
+}
+
+const queuedItems   = queue.map(buildLabelProduct);
+const fallbackSizes = ["large"];               // global default if a product omits its sizes
 
 // On "Print Selected":
-const url = makePrintSheetHref(queuedItems, selectedSizes);
+const url = makePrintSheetHref(queuedItems, fallbackSizes);
 window.open(url, "_blank", "noopener");
 ```
 
-The per-item `product` object shape is **unchanged** — exactly the one documented in `MANUS_PRINT_BUTTON.md` (rows a1–a12, image, qrPayload, color, etc.). Don't modify it per size — the print page picks which fields to render based on the size.
+The per-item product shape is **the existing shape from `MANUS_PRINT_BUTTON.md` plus the new `sizes` array**. All other fields (rows a1–a12, image, qrPayload, color) are unchanged. The print page picks which fields to render based on the chosen size for each card.
 
 ---
 
@@ -125,6 +196,9 @@ Set up a queue with 3 items from different categories (one SUPPS, one BLT, one P
 | Queue 3 items, **0 sizes selected** | Print button disabled. |
 | Queue 0 items, any sizes | Print button disabled. |
 | Existing single-item Print Label button | Still works exactly as before — no regression. |
+| Per-item: SUPPS=`["large"]`, BLT=`["small"]`, PAPP=`["medium","large"]` | 2 large + 1 medium + 1 small = 4 cards total, grouped by size on 3 A4 pages. |
+| Per-item omitted on all 3 items, global `&sizes=medium` | All 3 print at medium only (fallback to global). |
+| Per-item: 1 item with `sizes=["small"]`, 2 items with no sizes field, global `&sizes=large` | 1 small + 2 large = 3 cards total. |
 
 Confirm in the print dialog: paper = **A4**, scale = **100%**, margins = **None**, background graphics = **ON**.
 
@@ -132,10 +206,11 @@ Confirm in the print dialog: paper = **A4**, scale = **100%**, margins = **None*
 
 ## Done = this
 
-- 4 buttons (Large / Medium / Small / All) on the Print Queue UI.
-- Multi-select works, **All** acts as toggle-all, count line shows items × sizes.
-- "Print Selected" opens `sheet.html?data=…&sizes=…` in a new tab.
-- 0-item or 0-size states disable the Print button cleanly.
+- 4 buttons (Large / Medium / Small / All) on each queued card (per-item, not global).
+- Each product object in the `?data=` array includes a `"sizes": [...]` array reflecting that card's toggles.
+- Multi-select works per item; **All** acts as toggle-all-three; count line shows total cards.
+- "Print Selected" opens `sheet.html?data=…&sizes=…` in a new tab — `&sizes=` becomes the fallback for any item missing per-item sizes.
+- 0-item or all-cards-have-empty-sizes states disable the Print button cleanly.
 - Single-item "Print Label" button unchanged.
 - You did not visit, preview, restyle, iframe, or modify the print page.
 
