@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<!--
+================================================================
+  XL FITNESS — KANBAN MEDIUM LABEL  (125 × 56.5 mm)
+  Source: Figma file TBHCw5NW0FCfA1eNJQGz5y (node 1:5)
+  1049 × 474 px Figma canvas → 125 × 56.5 mm print, 1:1 scale
+  Renders only: image (left), name (top-right), code (bottom-right)
+  Same data contract as index.html — extra fields are ignored.
+================================================================
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>XL Kanban Label — Medium</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:  #121826;
+    --black: #000;
+    --white: #fff;
+    --page-bg: #d6d6d6;
+    --print-w: 125mm;
+    --print-h: 56.5mm;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: 'Lexend', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--page-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 60px;
+  }
+
+  /* ---------- Controls ---------- */
+  .controls {
+    margin-bottom: 24px;
+    background: var(--white);
+    padding: 10px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 14px;
+    font-family: 'Lexend', sans-serif;
+    font-weight: 700;
+    flex-wrap: wrap;
+  }
+  .controls input {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    width: 180px;
+    font-family: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .controls button {
+    padding: 7px 16px;
+    background: var(--navy);
+    color: var(--white);
+    border: 0;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-weight: 800;
+  }
+  .controls .print-btn { background: #2a7a3a; }
+  .hint { font-size: 12px; color: #555; font-weight: 500; }
+
+  /* ---------- Stage = exact print size ---------- */
+  .stage {
+    width: var(--print-w);
+    height: var(--print-h);
+    position: relative;
+    container-type: size;
+    background: var(--white);
+  }
+
+  /* ---------- Label (Figma 1049 × 474 px → percentages) ---------- */
+  .label {
+    position: absolute;
+    inset: 0;
+    background: var(--navy);
+    /* 16px black border on 1049px wide → 1.525cqw */
+    outline: 1.525cqw solid var(--black);
+    outline-offset: -1.525cqw;
+  }
+  .label > * { position: absolute; }
+
+  /* ---------- Image rect ---------- */
+  /* Figma: 370 × 442 at (151, 16) on 1049 × 474 outer */
+  .image-rect {
+    left:   14.39%;   /* 151/1049 */
+    top:     3.38%;   /*  16/474  */
+    width:  35.27%;   /* 370/1049 */
+    height: 93.25%;   /* 442/474  */
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  .image-rect img {
+    max-width: 96%;
+    max-height: 96%;
+    object-fit: contain;
+  }
+  .image-rect .placeholder {
+    font-weight: 800;
+    font-size: 7.15cqw;       /* match the Figma <IMAGE> placeholder */
+    color: var(--black);
+  }
+
+  /* ---------- Name area (text on navy bg, no white box) ---------- */
+  /* Figma: 370 × 217 at (534, 16) */
+  .name-area {
+    left:   50.91%;   /* 534/1049 */
+    top:     3.38%;   /*  16/474  */
+    width:  35.27%;   /* 370/1049 */
+    height: 45.78%;   /* 217/474  */
+    color: var(--white);
+    font-weight: 800;
+    font-size: 3.81cqw;  /* 40/1049 */
+    line-height: 1.1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0 0.5cqw;
+    overflow: hidden;
+    word-wrap: break-word;
+  }
+
+  /* ---------- Code rect (white bg, black bold code text) ---------- */
+  /* Figma: 370 × 225 at (534, 233) */
+  .code-rect {
+    left:   50.91%;   /* 534/1049 */
+    top:    49.16%;   /* 233/474  */
+    width:  35.27%;   /* 370/1049 */
+    height: 47.47%;   /* 225/474  */
+    background: var(--white);
+    color: var(--black);
+    font-weight: 800;
+    font-size: 7.15cqw;  /* 75/1049 */
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    padding: 0 0.5cqw;
+    white-space: nowrap;
+    letter-spacing: 0.1cqw;
+  }
+
+  /* ---------- Print ---------- */
+  html, body, .stage, .label, .label * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  @media print {
+    @page {
+      size: 125mm 56.5mm;
+      margin: 0;
+    }
+    body {
+      background: white;
+      padding: 0;
+      margin: 0;
+      display: block;
+    }
+    .controls { display: none !important; }
+    .stage {
+      width: 125mm;
+      height: 56.5mm;
+      page-break-after: avoid;
+    }
+    /* Re-assert print colours so dark fills aren't stripped */
+    .label { background-color: var(--navy) !important; outline-color: var(--black) !important; }
+    .image-rect, .code-rect { background-color: var(--white) !important; }
+    .name-area { color: var(--white) !important; }
+    .code-rect { color: var(--black) !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <label for="code">XL-Code:</label>
+  <input id="code" type="text" value="SUPPS-0254" />
+  <button id="load">Load</button>
+  <button id="print" class="print-btn" type="button">Print 125×56.5mm</button>
+  <span class="hint">In the print dialog, choose paper size <strong>125 × 56.5 mm</strong> (custom), 100% scale, background graphics ON.</span>
+</div>
+
+<div class="stage">
+  <div class="label" id="label">
+    <div class="image-rect" id="productImage">
+      <span class="placeholder">&lt;IMAGE&gt;</span>
+    </div>
+    <div class="name-area" id="description"></div>
+    <div class="code-rect" id="xlCode"></div>
+  </div>
+</div>
+
+<script>
+  /* ---------- Local samples (testing) ---------- */
+  const PRODUCTS = {
+    "SUPPS-0254": {
+      code: "SUPPS-0254",
+      description: "CBUM Thavage PUMP RTD 355ml Juicy Pumps",
+      image: "",
+      color: "#121826"
+    },
+    "SUPPS-0356": {
+      code: "SUPPS-0356",
+      description: "Gatorade NO SUGAR - Berry",
+      image: "",
+      color: "#121826"
+    }
+  };
+
+  /* ---------- Data resolution: ?data= → ?code= → local PRODUCTS ---------- */
+  const API_ENDPOINT = "";
+
+  function decodeDataParam(b64) {
+    try {
+      return JSON.parse(decodeURIComponent(escape(atob(b64))));
+    } catch (e) {
+      console.error("Failed to decode ?data= param:", e);
+      return null;
+    }
+  }
+
+  async function loadProduct(code) {
+    const dataParam = new URLSearchParams(window.location.search).get("data");
+    if (dataParam) {
+      const decoded = decodeDataParam(dataParam);
+      if (decoded) return decoded;
+    }
+    if (API_ENDPOINT && code) {
+      try {
+        const res = await fetch(API_ENDPOINT + encodeURIComponent(code));
+        if (res.ok) return await res.json();
+      } catch (e) {
+        console.error("API fetch failed:", e);
+      }
+    }
+    return PRODUCTS[code] || null;
+  }
+
+  async function render(code) {
+    const p = await loadProduct(code);
+    if (!p) {
+      alert("No product found for code: " + code);
+      return;
+    }
+
+    // Apply per-product accent (from the category, per Manus brief)
+    const accent = (p.color && /^#[0-9a-fA-F]{3,8}$/.test(p.color))
+      ? p.color : "#121826";
+    document.getElementById("label").style.setProperty("--navy", accent);
+
+    document.getElementById("xlCode").textContent      = p.code || "";
+    document.getElementById("description").textContent = p.description || "";
+
+    const img = document.getElementById("productImage");
+    img.innerHTML = p.image
+      ? `<img src="${p.image}" alt="${p.description || ''}" />`
+      : `<span class="placeholder">&lt;IMAGE&gt;</span>`;
+  }
+
+  /* ---------- Auto-fit text to its container ---------- */
+  function fitText(el, minPx = 6) {
+    if (!el || !el.textContent.trim()) return;
+    el.style.fontSize = "";
+    let guard = 80;
+    while (
+      (el.scrollWidth > el.clientWidth || el.scrollHeight > el.clientHeight) &&
+      guard-- > 0
+    ) {
+      const cs = window.getComputedStyle(el);
+      const current = parseFloat(cs.fontSize);
+      const next = Math.max(minPx, current - 0.5);
+      if (next === current) break;
+      el.style.fontSize = next + "px";
+    }
+  }
+  function fitAll() {
+    document.querySelectorAll(".name-area, .code-rect")
+      .forEach(el => fitText(el));
+  }
+
+  document.getElementById("load").addEventListener("click", async () => {
+    const code = document.getElementById("code").value.trim().toUpperCase();
+    await render(code);
+    requestAnimationFrame(fitAll);
+  });
+  document.getElementById("print").addEventListener("click", () => {
+    fitAll();
+    window.print();
+  });
+
+  const params = new URLSearchParams(window.location.search);
+  const initial = (params.get("code") || "SUPPS-0254").toUpperCase();
+  document.getElementById("code").value = initial;
+  render(initial).then(() => {
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(fitAll);
+    } else {
+      requestAnimationFrame(fitAll);
+    }
+  });
+
+  window.addEventListener("resize", () => requestAnimationFrame(fitAll));
+  window.addEventListener("beforeprint", fitAll);
+</script>
+
+</body>
+</html>
