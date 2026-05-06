@@ -288,7 +288,9 @@
   }
 
   @media print {
-    @page { size: A4; margin: 0; }
+    /* 10mm @page margin keeps cards clear of the printer's unprintable edge zone.
+       Printable area: 210−20 = 190mm wide × 297−20 = 277mm tall. */
+    @page { size: A4; margin: 10mm; }
     body { background: white; padding: 0; margin: 0; }
     .controls, .empty-state { display: none !important; }
 
@@ -298,11 +300,19 @@
       box-shadow: none;
       page-break-after: always;
       break-after: page;
+      /* Match the printable area; padding handled by @page margin */
+      width: 190mm;
+      height: 277mm;
+      padding: 0;
     }
     .page:last-child {
       page-break-after: auto !important;
       break-after: auto !important;
     }
+    /* Per-size print layout — cards centered within the printable area */
+    .page--large  { gap: 12mm; justify-content: center; }
+    .page--medium { gap: 2mm;  justify-content: center; }
+    .page--small  { gap: 2mm 4mm; }
 
     /* Re-assert per-size colours so they aren't stripped */
     .page--large .code-bar,
@@ -546,11 +556,16 @@
     return { stage };
   }
 
-  /* ---------- Per-size config ---------- */
+  /* ---------- Per-size config ----------
+     perPage tuned for A4 printable area (190 × 277 mm with @page margin 10mm):
+     Large  2 cards (2 × 127 + 12mm gap = 266mm, fits 277mm)
+     Medium 5 cards (5 × 52  +  8mm gap = 268mm, fits 277mm)
+     Small  18 cards = 9 rows × 2 cols (9 × 28.5 + 16mm row gaps = 272.5mm, fits 277mm)
+  */
   const SIZE_CONFIG = {
     large:  { perPage: 2,  build: buildLargeCard  },
     medium: { perPage: 5,  build: buildMediumCard },
-    small:  { perPage: 20, build: buildSmallCard  }
+    small:  { perPage: 18, build: buildSmallCard  }
   };
 
   /* ---------- Auto-fit text in each cell ---------- */
