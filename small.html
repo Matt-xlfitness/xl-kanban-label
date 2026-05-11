@@ -114,9 +114,9 @@
     overflow: hidden;
   }
   .image-rect img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;           /* fill the rect like the Figma <IMAGE> placeholder does */
+    max-width: 96%;
+    max-height: 96%;
+    object-fit: contain;         /* preserves photo aspect; the 96% leaves a small breathing-room padding */
   }
   .image-rect .placeholder {
     font-weight: 800;
