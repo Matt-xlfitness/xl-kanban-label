@@ -512,7 +512,10 @@
     Object.entries(p.rows).forEach(([k, { label, value }]) => {
       const lbl = document.getElementById("lbl-" + k);
       const val = document.getElementById("val-" + k);
-      const isEmpty = !label && !value;
+      // Hide a row if EITHER half is missing (was: only when both were empty).
+      // Stops "Price Per Unit (inc GST)" and similar label-only rows from
+      // rendering when the data doesn't supply a value.
+      const isEmpty = !label || !value;
       if (lbl) {
         lbl.textContent = label || "";
         lbl.classList.toggle("is-empty", isEmpty);

@@ -438,7 +438,10 @@
 
     Object.entries(SPEC_TOPS).forEach(([key, top]) => {
       const row = (product.rows && product.rows[key]) || { label: '', value: '' };
-      const isEmpty = !row.label && !row.value;
+      // Hide a row if EITHER half is missing (was: only when both were empty).
+      // Stops "Price Per Unit (inc GST)" and similar label-only rows from
+      // rendering when the data doesn't supply a value.
+      const isEmpty = !row.label || !row.value;
 
       const lblCell = document.createElement('div');
       lblCell.className = 'cell cell-label' + (isEmpty ? ' is-empty' : '');
